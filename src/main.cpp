@@ -54,14 +54,12 @@ int main()
 
 		namedWindow("Webcam", CV_WINDOW_AUTOSIZE);
 
-		cout << "webcam window created \n";
-
 		while (true)
 		{
 			if (!vid.read(frame))
 				break;
 
-			vector<Vec3f> foundPoints;
+			vector<Vec2f> foundPoints;
 			bool found = false;
 
 			found = findChessboardCorners(frame, boardSize, foundPoints, CV_CALIB_CB_ADAPTIVE_THRESH);
