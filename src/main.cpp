@@ -206,12 +206,49 @@ int main()
 			frame.copyTo(drawToframe);
 
 			drawChessboardCorners(drawToframe, chessboardDimensions, foundPoints, found);
-			if (found)
+
+			if (found) {
+
+
+				
+				IplImage tmp2 = drawToframe;
+				Mat rotation_vector; // Rotation in axis-angle form
+				Mat translation_vector;
+				cout << cameraMatrix << endl;
+				cout << distanceCoefficients << endl;
+				//create wannabe points
+				vector<vector<Point3f>> worldCorners(1);
+				CreateKnownBoardPositions(chessboardDimensions, calibrationSquareDimentions, worldCorners[0]);
+				//solve pnp
+				solvePnP(worldCorners[0], foundPoints, cameraMatrix, distanceCoefficients2, rotation_vector, translation_vector);
+				//project points
+				vector<Point2d> projectedPoints;
+				vector<Point2d> projectedPointsX;
+				vector<Point2d> projectedPointsY;
+				vector<Point2d> projectedPointsZ;
+				vector<Point3d> pointToDrawZero;
+				vector<Point3d> pointToDrawX;
+				vector<Point3d> pointToDrawY;
+				vector<Point3d> pointToDrawZ;
+				pointToDrawZero.push_back(Point3d(0, 0, 0));
+				pointToDrawX.push_back(Point3d(0.1, 0, 0));
+				pointToDrawY.push_back(Point3d(0, 0.1, 0));
+				pointToDrawZ.push_back(Point3d(0, 0, 0.1));
+				//cout << pointToDrawZero.size() << endl;
+				projectPoints(pointToDrawZero, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
+				projectPoints(pointToDrawX, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsX);
+				projectPoints(pointToDrawY, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsY);
+				projectPoints(pointToDrawZ, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsZ);
+
+				cvLine(&tmp2, projectedPointsX[0], projectedPoints[0], Scalar(255, 0, 0), 2, 8);
+				cvLine(&tmp2, projectedPointsY[0], projectedPoints[0], Scalar(0, 255, 0), 2, 8);
+				cvLine(&tmp2, projectedPointsZ[0], projectedPoints[0], Scalar(0, 0, 255), 2, 8);
 				imshow("Webcam", drawToframe);
+			}
 			else
 				imshow("Webcam", frame);
 			char character = waitKey(1000 / framePerSecond);
-
+			
 			switch (character)
 			{
 				//space
@@ -268,15 +305,33 @@ int main()
 				solvePnP(worldCorners[0], foundPoints, cameraMatrix, distanceCoefficients2, rotation_vector, translation_vector);
 				//project points
 				vector<Point2d> projectedPoints;
-				vector<Point3d> pointToDraw;
-				pointToDraw.push_back(Point3d(0, 0, 0));
-
-				projectPoints(pointToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
-				cout << foundPoints.size() << endl;
+				vector<Point2d> projectedPointsX;
+				vector<Point2d> projectedPointsY;
+				vector<Point2d> projectedPointsZ;
+				vector<Point3d> pointToDrawZero;
+				vector<Point3d> pointToDrawX;
+				vector<Point3d> pointToDrawY;
+				vector<Point3d> pointToDrawZ;
+				pointToDrawZero.push_back(Point3d(0, 0, 0));
+				pointToDrawX.push_back(Point3d(0.1, 0, 0));
+				pointToDrawY.push_back(Point3d(0, 0.1, 0));
+				pointToDrawZ.push_back(Point3d(0, 0, 0.1));
+				//cout << pointToDrawZero.size() << endl;
+				projectPoints(pointToDrawZero, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
+				projectPoints(pointToDrawX, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsX);
+				projectPoints(pointToDrawY, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsY);
+				projectPoints(pointToDrawZ, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsZ);
 				//play with these?
-				cvLine(&tmp, foundPoints[1][0], projectedPoints[0], Scalar(110, 220, 0), 2, 8);
-				cvLine(&tmp, foundPoints[0][0], projectedPoints[0], Scalar(110, 220, 0), 2, 8);
-				cvLine(&tmp, foundPoints[1][1], projectedPoints[0], Scalar(110, 220, 0), 2, 8);
+				
+				cout << foundPoints[0][0] << endl;
+				cout << foundPoints[1][1] << endl;
+				cout << foundPoints[2] << endl;
+				cout << foundPoints[2][0] << endl;
+				
+				cvLine(&tmp, projectedPointsX[0], projectedPoints[0], Scalar(255, 0, 0), 2, 8);
+				cvLine(&tmp, projectedPointsY[0], projectedPoints[0], Scalar(0, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPointsZ[0], projectedPoints[0], Scalar(0, 0, 255), 2, 8);
+				
 				imshow("windowafter", newImg);
 			}
 					  break;
