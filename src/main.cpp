@@ -10,7 +10,7 @@ using namespace cv;
 
 const int calibrationmode = 1; //0 is list of images, 1 is camera
 
-const float calibrationSquareDimensions = 0.016f;
+const float calibrationSquareDimensions = 0.116f;
 const Size chessboardDimensions = Size(6, 9);
 
 //functions
@@ -265,21 +265,21 @@ int main()
 				vector<Point2d> projectedPoints, projectedPointsAxis;
 				vector<Point3d> pointsToDraw, axisPointsToDraw;
 				//the 3 axis
-				axisPointsToDraw.push_back(Point3d(0.1, 0, 0));
-				axisPointsToDraw.push_back(Point3d(0, 0.1, 0));
-				axisPointsToDraw.push_back(Point3d(0, 0, 0.1));
+				axisPointsToDraw.push_back(Point3d(1, 0, 0));
+				axisPointsToDraw.push_back(Point3d(0, 1, 0));
+				axisPointsToDraw.push_back(Point3d(0, 0, -1));
 				//the points for the cube
 				pointsToDraw.push_back(Point3d(1, 0, 0));
 				pointsToDraw.push_back(Point3d(0, 1, 0));
-				pointsToDraw.push_back(Point3d(0, 0, 1));
+				pointsToDraw.push_back(Point3d(0, 0, -1));
 				pointsToDraw.push_back(Point3d(1, 1, 0));
-				pointsToDraw.push_back(Point3d(0, 1, 1));
-				pointsToDraw.push_back(Point3d(1, 0, 1));
-				pointsToDraw.push_back(Point3d(1, 1, 1));
+				pointsToDraw.push_back(Point3d(0, 1, -1));
+				pointsToDraw.push_back(Point3d(1, 0, -1));
+				pointsToDraw.push_back(Point3d(1, 1, -1));
 
 				for (int i = 0; i < pointsToDraw.size(); i++)
 				{
-					pointsToDraw[i] *= 0.02;
+					pointsToDraw[i] *= 0.2;
 				}
 				
 				projectPoints(axisPointsToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsAxis);
