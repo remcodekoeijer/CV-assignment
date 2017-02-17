@@ -10,12 +10,7 @@ using namespace cv;
 
 const int calibrationmode = 1; //0 is list of images, 1 is camera
 
-const int boardHeight = 6;
-const int boardWidth = 9;
-const float squareSize = 50; //millimeters
-const Size boardSize = cvSize(boardWidth, boardHeight);
-
-const float calibrationSquareDimentions = 0.016f;
+const float calibrationSquareDimensions = 0.016f;
 const Size chessboardDimensions = Size(6, 9);
 
 //functions
@@ -201,54 +196,15 @@ int main()
 
 			found = findChessboardCorners(frame, chessboardDimensions, foundPoints, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
 
-
-
 			frame.copyTo(drawToframe);
 
 			drawChessboardCorners(drawToframe, chessboardDimensions, foundPoints, found);
-
-			if (found) {
-
-
-				
-				IplImage tmp2 = drawToframe;
-				Mat rotation_vector; // Rotation in axis-angle form
-				Mat translation_vector;
-				cout << cameraMatrix << endl;
-				cout << distanceCoefficients << endl;
-				//create wannabe points
-				vector<vector<Point3f>> worldCorners(1);
-				CreateKnownBoardPositions(chessboardDimensions, calibrationSquareDimentions, worldCorners[0]);
-				//solve pnp
-				solvePnP(worldCorners[0], foundPoints, cameraMatrix, distanceCoefficients2, rotation_vector, translation_vector);
-				//project points
-				vector<Point2d> projectedPoints;
-				vector<Point2d> projectedPointsX;
-				vector<Point2d> projectedPointsY;
-				vector<Point2d> projectedPointsZ;
-				vector<Point3d> pointToDrawZero;
-				vector<Point3d> pointToDrawX;
-				vector<Point3d> pointToDrawY;
-				vector<Point3d> pointToDrawZ;
-				pointToDrawZero.push_back(Point3d(0, 0, 0));
-				pointToDrawX.push_back(Point3d(0.1, 0, 0));
-				pointToDrawY.push_back(Point3d(0, 0.1, 0));
-				pointToDrawZ.push_back(Point3d(0, 0, 0.1));
-				//cout << pointToDrawZero.size() << endl;
-				projectPoints(pointToDrawZero, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
-				projectPoints(pointToDrawX, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsX);
-				projectPoints(pointToDrawY, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsY);
-				projectPoints(pointToDrawZ, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsZ);
-
-				cvLine(&tmp2, projectedPointsX[0], projectedPoints[0], Scalar(255, 0, 0), 2, 8);
-				cvLine(&tmp2, projectedPointsY[0], projectedPoints[0], Scalar(0, 255, 0), 2, 8);
-				cvLine(&tmp2, projectedPointsZ[0], projectedPoints[0], Scalar(0, 0, 255), 2, 8);
+			if (found)
 				imshow("Webcam", drawToframe);
-			}
 			else
 				imshow("Webcam", frame);
 			char character = waitKey(1000 / framePerSecond);
-			
+
 			switch (character)
 			{
 				//space
@@ -260,6 +216,7 @@ int main()
 					Mat temp;
 					frame.copyTo(temp);
 					savedImages.push_back(temp);
+
 					//print vector numbers
 					for (vector<Vec2f>::const_iterator i = foundPoints.begin(); i != foundPoints.end(); ++i)
 						cout << *i << ' ';
@@ -272,7 +229,7 @@ int main()
 				if (savedImages.size() > 3)
 				{
 					cout << "Matrix created with " << count << " images" << endl;
-					cameraCalibration(savedImages, chessboardDimensions, calibrationSquareDimentions, cameraMatrix, distanceCoefficients);
+					cameraCalibration(savedImages, chessboardDimensions, calibrationSquareDimensions, cameraMatrix, distanceCoefficients);
 					saveCameraCalibration("CamCalib.txt", cameraMatrix, distanceCoefficients);
 				}
 
@@ -299,40 +256,56 @@ int main()
 				cout << cameraMatrix << endl;
 				cout << distanceCoefficients << endl;
 				//create wannabe points
-				vector<vector<Point3f>> worldCorners(1);
-				CreateKnownBoardPositions(chessboardDimensions, calibrationSquareDimentions, worldCorners[0]);
+				vector<Point3f> worldCorners;
+				CreateKnownBoardPositions(chessboardDimensions, calibrationSquareDimensions, worldCorners);
 				//solve pnp
-				solvePnP(worldCorners[0], foundPoints, cameraMatrix, distanceCoefficients2, rotation_vector, translation_vector);
+				solvePnP(worldCorners, foundPoints, cameraMatrix, distanceCoefficients2, rotation_vector, translation_vector);
 				//project points
-				vector<Point2d> projectedPoints;
-				vector<Point2d> projectedPointsX;
-				vector<Point2d> projectedPointsY;
-				vector<Point2d> projectedPointsZ;
-				vector<Point3d> pointToDrawZero;
-				vector<Point3d> pointToDrawX;
-				vector<Point3d> pointToDrawY;
-				vector<Point3d> pointToDrawZ;
-				pointToDrawZero.push_back(Point3d(0, 0, 0));
-				pointToDrawX.push_back(Point3d(0.1, 0, 0));
-				pointToDrawY.push_back(Point3d(0, 0.1, 0));
-				pointToDrawZ.push_back(Point3d(0, 0, 0.1));
-				//cout << pointToDrawZero.size() << endl;
-				projectPoints(pointToDrawZero, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
-				projectPoints(pointToDrawX, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsX);
-				projectPoints(pointToDrawY, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsY);
-				projectPoints(pointToDrawZ, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsZ);
-				//play with these?
+				Point2d corner = foundPoints[0];
+				vector<Point2d> projectedPoints, projectedPointsAxis;
+				vector<Point3d> pointsToDraw, axisPointsToDraw;
+				//the 3 axis
+				axisPointsToDraw.push_back(Point3d(0.1, 0, 0));
+				axisPointsToDraw.push_back(Point3d(0, 0.1, 0));
+				axisPointsToDraw.push_back(Point3d(0, 0, 0.1));
+				//the points for the cube
+				pointsToDraw.push_back(Point3d(1, 0, 0));
+				pointsToDraw.push_back(Point3d(0, 1, 0));
+				pointsToDraw.push_back(Point3d(0, 0, 1));
+				pointsToDraw.push_back(Point3d(1, 1, 0));
+				pointsToDraw.push_back(Point3d(0, 1, 1));
+				pointsToDraw.push_back(Point3d(1, 0, 1));
+				pointsToDraw.push_back(Point3d(1, 1, 1));
+
+				for (int i = 0; i < pointsToDraw.size(); i++)
+				{
+					pointsToDraw[i] *= 0.02;
+				}
 				
-				cout << foundPoints[0][0] << endl;
-				cout << foundPoints[1][1] << endl;
-				cout << foundPoints[2] << endl;
-				cout << foundPoints[2][0] << endl;
-				
-				cvLine(&tmp, projectedPointsX[0], projectedPoints[0], Scalar(255, 0, 0), 2, 8);
-				cvLine(&tmp, projectedPointsY[0], projectedPoints[0], Scalar(0, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPointsZ[0], projectedPoints[0], Scalar(0, 0, 255), 2, 8);
-				
+				projectPoints(axisPointsToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsAxis);
+				projectPoints(pointsToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
+				cout << foundPoints.size() << endl;
+
+				//cube lines
+				cvLine(&tmp, corner, projectedPoints[0], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, corner, projectedPoints[1], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, corner, projectedPoints[2], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[0], projectedPoints[3], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[0], projectedPoints[5], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[1], projectedPoints[3], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[1], projectedPoints[4], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[2], projectedPoints[4], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[2], projectedPoints[5], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[3], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[4], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
+				cvLine(&tmp, projectedPoints[5], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
+				//axis lines
+				cvLine(&tmp, corner, projectedPointsAxis[0], Scalar(255, 0, 0), 2, 8);
+				cvLine(&tmp, corner, projectedPointsAxis[1], Scalar(0, 225, 0), 2, 8);
+				cvLine(&tmp, corner, projectedPointsAxis[2], Scalar(0, 0, 255), 2, 8);
+
 				imshow("windowafter", newImg);
+				imwrite("outputImgAxis.jpg", newImg);
 			}
 					  break;
 			case 27:
