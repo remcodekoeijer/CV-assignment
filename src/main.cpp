@@ -8,9 +8,10 @@
 using namespace std;
 using namespace cv;
 
+//constants
 const int calibrationmode = 1; //0 is list of images, 1 is camera
 
-const float calibrationSquareDimensions = 0.116f;
+const float calibrationSquareDimensions = 0.016f; //change this according to your image dimensions
 const Size chessboardDimensions = Size(6, 9);
 
 //functions
@@ -44,7 +45,7 @@ void getChessboardCorners(vector<Mat> images, vector<vector<Point2f>>& allfoundc
 		}
 	}
 }
-
+//callibrate camera
 void cameraCalibration(vector<Mat> callibrationImages, Size boardSize, float squareEdgeLength, Mat& cameraMatrix, Mat& distanceCoefficients)
 {
 	vector<vector<Point2f>> checkerboardImageSpacePoints;
@@ -63,7 +64,7 @@ void cameraCalibration(vector<Mat> callibrationImages, Size boardSize, float squ
 	calibrateCamera(worldSpaceCornerPoints, checkerboardImageSpacePoints, boardSize, cameraMatrix, distanceCoefficients, rVectors, tVectors);
 
 }
-
+//save camera values
 bool saveCameraCalibration(string name, Mat cameraMatrix, Mat distanceCoefficients)
 {
 	ofstream outStream(name);
@@ -100,7 +101,7 @@ bool saveCameraCalibration(string name, Mat cameraMatrix, Mat distanceCoefficien
 	return false;
 }
 
-//getting matrix, not sure if correct way
+//getting matrix
 void getCalibrationMatrix(Mat &cameraMatrix, Mat &distanceCoefficients)
 {
 	ifstream reader("CamCalib.txt");
@@ -121,12 +122,10 @@ void getCalibrationMatrix(Mat &cameraMatrix, Mat &distanceCoefficients)
 		}
 		rows = distanceCoefficients.rows;
 		columns = distanceCoefficients.cols;
-		cout << rows << columns << endl;
 		for (size_t r = 0; r < rows; r++)
 		{
 			for (size_t c = 0; c < columns; c++)
 			{
-				cout << nvalue << endl;
 				reader >> nvalue;
 				distanceCoefficients.at<double>(r, c) = nvalue;
 			}
@@ -135,6 +134,62 @@ void getCalibrationMatrix(Mat &cameraMatrix, Mat &distanceCoefficients)
 		reader.close();
 	}
 }
+
+void drawAxisCube(Mat& imgToDraw, Mat cameraMatrix, Mat distanceCoefficients2, vector<Vec2f> foundPoints) {
+	IplImage tmp = imgToDraw;
+	//vectors and stuff
+	Mat rotation_vector; // Rotation in axis-angle form
+	Mat translation_vector;
+
+	//create wannabe points
+	vector<Point3f> worldCorners;
+	CreateKnownBoardPositions(chessboardDimensions, calibrationSquareDimensions, worldCorners);
+	//solve pnp, find pose
+	solvePnP(worldCorners, foundPoints, cameraMatrix, distanceCoefficients2, rotation_vector, translation_vector);
+	//project points
+	Point2d corner = foundPoints[0];
+	vector<Point2d> projectedPoints, projectedPointsAxis;
+	vector<Point3d> pointsToDraw, axisPointsToDraw;
+	//the 3 axis
+	axisPointsToDraw.push_back(Point3d(0.1, 0, 0));
+	axisPointsToDraw.push_back(Point3d(0, 0.1, 0));
+	axisPointsToDraw.push_back(Point3d(0, 0, -0.1));
+	//the points for the cube
+	pointsToDraw.push_back(Point3d(1, 0, 0));
+	pointsToDraw.push_back(Point3d(0, 1, 0));
+	pointsToDraw.push_back(Point3d(0, 0, -1));
+	pointsToDraw.push_back(Point3d(1, 1, 0));
+	pointsToDraw.push_back(Point3d(0, 1, -1));
+	pointsToDraw.push_back(Point3d(1, 0, -1));
+	pointsToDraw.push_back(Point3d(1, 1, -1));
+
+	for (int i = 0; i < pointsToDraw.size(); i++)
+	{
+		pointsToDraw[i] *= 0.02;
+	}
+
+	projectPoints(axisPointsToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsAxis);
+	projectPoints(pointsToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
+
+	//cube lines
+	cvLine(&tmp, corner, projectedPoints[0], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, corner, projectedPoints[1], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, corner, projectedPoints[2], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[0], projectedPoints[3], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[0], projectedPoints[5], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[1], projectedPoints[3], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[1], projectedPoints[4], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[2], projectedPoints[4], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[2], projectedPoints[5], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[3], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[4], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
+	cvLine(&tmp, projectedPoints[5], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
+	//axis lines
+	cvLine(&tmp, corner, projectedPointsAxis[0], Scalar(255, 0, 0), 2, 8);
+	cvLine(&tmp, corner, projectedPointsAxis[1], Scalar(0, 225, 0), 2, 8);
+	cvLine(&tmp, corner, projectedPointsAxis[2], Scalar(0, 0, 255), 2, 8);
+}
+
 
 int main()
 {
@@ -159,6 +214,7 @@ int main()
 
 	if (calibrationmode == 1)
 	{
+		bool drawLive = false;
 		int count = 0;
 		Mat newImg;
 		vector<Vec2f> foundPoints;
@@ -186,12 +242,11 @@ int main()
 
 
 		namedWindow("Webcam", CV_WINDOW_AUTOSIZE);
-		cout << "Press space bar for capture and Enter to create matrix" << endl;
+		cout << "Press 'space bar' for capture and 'Enter' to create matrix" << endl;
 		while (true)
 		{
 			if (!vid.read(frame))
 				break;
-			//vector<Vec2f> foundPoints;
 			bool found = false;
 
 			found = findChessboardCorners(frame, chessboardDimensions, foundPoints, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
@@ -199,8 +254,14 @@ int main()
 			frame.copyTo(drawToframe);
 
 			drawChessboardCorners(drawToframe, chessboardDimensions, foundPoints, found);
-			if (found)
+			if (found) 
+			{
+				//draw axis and cube
+				if(drawLive)
+					drawAxisCube(drawToframe, cameraMatrix, distanceCoefficients2, foundPoints);
+				//show webcam with foundcorners
 				imshow("Webcam", drawToframe);
+			}
 			else
 				imshow("Webcam", frame);
 			char character = waitKey(1000 / framePerSecond);
@@ -218,17 +279,17 @@ int main()
 					savedImages.push_back(temp);
 
 					//print vector numbers
-					for (vector<Vec2f>::const_iterator i = foundPoints.begin(); i != foundPoints.end(); ++i)
+					/*for (vector<Vec2f>::const_iterator i = foundPoints.begin(); i != foundPoints.end(); ++i)
 						cout << *i << ' ';
 					cout << cameraMatrix << endl;
-					cout << distanceCoefficients << endl;
+					cout << distanceCoefficients << endl;*/
 				}
 				break;
 				//enter
 			case 13:
 				if (savedImages.size() > 3)
 				{
-					cout << "Matrix created with " << count << " images" << endl;
+					cout << "Matrix created with " << count << " images, press 'g' to show axis and cube" << endl;
 					cameraCalibration(savedImages, chessboardDimensions, calibrationSquareDimensions, cameraMatrix, distanceCoefficients);
 					saveCameraCalibration("CamCalib.txt", cameraMatrix, distanceCoefficients);
 				}
@@ -238,8 +299,8 @@ int main()
 			case 'g':
 			{
 				getCalibrationMatrix(cameraMatrix, distanceCoefficients2);
-				cout << cameraMatrix << endl;
-				cout << distanceCoefficients2 << endl;
+				drawLive = true;
+				
 			}
 			break;
 			//project and draw stuff
@@ -248,61 +309,9 @@ int main()
 				imwrite("outputImg.jpg", drawToframe);
 				newImg = imread("outputImg.jpg");
 				imshow("windowbefore", newImg);
-				//make array for drawing image
-				IplImage tmp = newImg;
-				//vectors and stuff
-				Mat rotation_vector; // Rotation in axis-angle form
-				Mat translation_vector;
-				cout << cameraMatrix << endl;
-				cout << distanceCoefficients << endl;
-				//create wannabe points
-				vector<Point3f> worldCorners;
-				CreateKnownBoardPositions(chessboardDimensions, calibrationSquareDimensions, worldCorners);
-				//solve pnp
-				solvePnP(worldCorners, foundPoints, cameraMatrix, distanceCoefficients2, rotation_vector, translation_vector);
-				//project points
-				Point2d corner = foundPoints[0];
-				vector<Point2d> projectedPoints, projectedPointsAxis;
-				vector<Point3d> pointsToDraw, axisPointsToDraw;
-				//the 3 axis
-				axisPointsToDraw.push_back(Point3d(1, 0, 0));
-				axisPointsToDraw.push_back(Point3d(0, 1, 0));
-				axisPointsToDraw.push_back(Point3d(0, 0, -1));
-				//the points for the cube
-				pointsToDraw.push_back(Point3d(1, 0, 0));
-				pointsToDraw.push_back(Point3d(0, 1, 0));
-				pointsToDraw.push_back(Point3d(0, 0, -1));
-				pointsToDraw.push_back(Point3d(1, 1, 0));
-				pointsToDraw.push_back(Point3d(0, 1, -1));
-				pointsToDraw.push_back(Point3d(1, 0, -1));
-				pointsToDraw.push_back(Point3d(1, 1, -1));
+				//draw axis and cube
+				drawAxisCube(newImg, cameraMatrix, distanceCoefficients2, foundPoints);
 
-				for (int i = 0; i < pointsToDraw.size(); i++)
-				{
-					pointsToDraw[i] *= 0.2;
-				}
-				
-				projectPoints(axisPointsToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPointsAxis);
-				projectPoints(pointsToDraw, rotation_vector, translation_vector, cameraMatrix, distanceCoefficients2, projectedPoints);
-				cout << foundPoints.size() << endl;
-
-				//cube lines
-				cvLine(&tmp, corner, projectedPoints[0], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, corner, projectedPoints[1], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, corner, projectedPoints[2], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[0], projectedPoints[3], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[0], projectedPoints[5], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[1], projectedPoints[3], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[1], projectedPoints[4], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[2], projectedPoints[4], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[2], projectedPoints[5], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[3], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[4], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
-				cvLine(&tmp, projectedPoints[5], projectedPoints[6], Scalar(255, 255, 0), 2, 8);
-				//axis lines
-				cvLine(&tmp, corner, projectedPointsAxis[0], Scalar(255, 0, 0), 2, 8);
-				cvLine(&tmp, corner, projectedPointsAxis[1], Scalar(0, 225, 0), 2, 8);
-				cvLine(&tmp, corner, projectedPointsAxis[2], Scalar(0, 0, 255), 2, 8);
 
 				imshow("windowafter", newImg);
 				imwrite("outputImgAxis.jpg", newImg);
