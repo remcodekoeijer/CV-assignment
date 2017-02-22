@@ -63,11 +63,11 @@ int main(int argc, char** argv)
 
 	if (type == 'y')
 	{
-		CalibrateCam Cam;
-		CalibrateCameras("data/cam1/intrinsics.xml", 1, Cam);
-		CalibrateCameras("data/cam2/intrinsics.xml", 2, Cam);
-		CalibrateCameras("data/cam3/intrinsics.xml", 3, Cam);
-		CalibrateCameras("data/cam4/intrinsics.xml", 4, Cam);
+		CalibrateCam Cam1,Cam2,Cam3,Cam4;
+		CalibrateCameras("data/cam1/intrinsics.xml", 1, Cam1);
+		CalibrateCameras("data/cam2/intrinsics.xml", 2, Cam2);
+		CalibrateCameras("data/cam3/intrinsics.xml", 3, Cam3);
+		CalibrateCameras("data/cam4/intrinsics.xml", 4, Cam4);
 	}
 	
 	//code for creating background image

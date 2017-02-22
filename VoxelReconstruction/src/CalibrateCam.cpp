@@ -31,7 +31,7 @@ void CalibrateCam::getChessboardCorners(vector<Mat> images, vector<vector<Point2
 	for (vector<Mat>::iterator iter = images.begin(); iter != images.end(); iter++)
 	{
 		vector<Point2f> pointBuf;
-		bool found = findChessboardCorners(*iter, Size(8, 6), pointBuf, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
+		bool found = findChessboardCorners(*iter, Size(6,8), pointBuf, CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_NORMALIZE_IMAGE);
 		if (found) {
 			allfoundcorners.push_back(pointBuf);
 		}
@@ -71,7 +71,7 @@ void CalibrateCam::saveCameraCalibrationX(string name, Mat cameraMatrix, Mat dis
 	time_t rawtime; time(&rawtime);
 	fs << "calibrationDate" << asctime(localtime(&rawtime));*/
 	
-	fs << "cameraMatrix" << cameraMatrix << "distCoeffs" << distanceCoefficients;
+	fs << "CameraMatrix" << cameraMatrix << "DistortionCoeffs" << distanceCoefficients;
 
 	fs.release();
 
@@ -89,8 +89,8 @@ void CalibrateCam::getCameraCalibrationX(string name ,Mat &cameraMatrix, Mat &di
 	//fs2["calibrationDate"] >> date;
 
 	Mat cameraMatrix2, distCoeffs2;
-	fs2["cameraMatrix"] >> cameraMatrix;
-	fs2["distCoeffs"] >> distanceCoefficients;
+	fs2["CameraMatrix"] >> cameraMatrix;
+	fs2["DistortionCoeffs"] >> distanceCoefficients;
 
 	cout /*<< "frameCount: " << frameCount << endl
 		<< "calibration date: " << date << endl*/

@@ -356,6 +356,7 @@ bool Camera::detExtrinsics(
 	delete m_BoardCorners;
 
 	Mat rotation_values_d, translation_values_d;
+	cout << camera_matrix << endl;
 	solvePnP(object_points, image_points, camera_matrix, distortion_coeffs, rotation_values_d, translation_values_d);
 
 	Mat rotation_values, translation_values;
