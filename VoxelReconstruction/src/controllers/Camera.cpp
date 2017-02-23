@@ -17,6 +17,7 @@
 #include <opencv2/highgui/highgui_c.h>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
+#include <opencv2/opencv.hpp>
 #include <stddef.h>
 #include <cassert>
 #include <iostream>
@@ -58,7 +59,70 @@ bool Camera::initialize()
 {
 	m_initialized = true;
 
-	Mat bg_image;
+	Mat bg_image, bg_frame, bg_avg;
+
+	//Get a bg image from the bg video
+	VideoCapture bg_video;
+	bg_video = VideoCapture(m_data_path + "background.avi");
+	int frameCount = bg_video.get(CV_CAP_PROP_FRAME_COUNT);
+	
+	bg_video >> bg_frame;
+	/* //Get the first frame from the background.avi and use it as background.png
+	if (!bg_frame.empty())
+	{
+		bg_image = bg_frame;
+		bg_video >> bg_frame;
+	}
+	else
+	{
+		cout << "No frame found in " + m_data_path + "background.avi";
+	}
+	*/
+
+	int pixelCount = bg_frame.cols * bg_frame.rows;
+
+	//Create 6 mat for all pixels and insert a mean and standard deviation value
+	Mat hMean(pixelCount, 1, bg_frame.type());
+	Mat hVar(pixelCount, 1, bg_frame.type()); 
+	Mat sMean(pixelCount, 1, bg_frame.type()); 
+	Mat sVar(pixelCount, 1, bg_frame.type()); 
+	Mat vMean(pixelCount, 1, bg_frame.type()); 
+	Mat vVar(pixelCount, 1, bg_frame.type());
+	
+	//Create a matrix with all the pixels (rows*cols) in the rows, and the frames in the cols
+	Mat all_Pixels(pixelCount, frameCount, bg_frame.type());
+
+	vector<Scalar> means(pixelCount);
+	vector<Scalar> vars(pixelCount);
+
+	int currentFrame = 0;
+	
+	//Per frame..
+	while (!bg_frame.empty())
+	{
+		for (int y = 0; y < bg_frame.rows; y++)
+		{
+			for (int x = 0; x < bg_frame.cols; x++)
+			{
+				//..get the hsv values from pixel x,y in the image and insert them as seperate channels in the all_pixels
+				Vec3b pixel = bg_frame.at<Vec3b>(y, x); 
+				all_Pixels.at<Vec3b>(x + y*bg_frame.cols, currentFrame)[0] = pixel.val[0];
+				all_Pixels.at<Vec3b>(x + y*bg_frame.cols, currentFrame)[1] = pixel.val[1];
+				all_Pixels.at<Vec3b>(x + y*bg_frame.cols, currentFrame)[2] = pixel.val[2];				
+			}
+		}
+		currentFrame++;
+		bg_video >> bg_frame;
+	}
+
+	//Per row, and thus per pixel, get the mean and stdev
+	for (int rowNr = 0; rowNr < all_Pixels.rows; rowNr++)
+	{
+		meanStdDev(all_Pixels.row(rowNr), means[rowNr], vars[rowNr], noArray());
+	}	
+
+	imwrite(m_data_path + "background.png", bg_image);
+
 	if (General::fexists(m_data_path + General::BackgroundImageFile))
 	{
 		bg_image = imread(m_data_path + General::BackgroundImageFile);

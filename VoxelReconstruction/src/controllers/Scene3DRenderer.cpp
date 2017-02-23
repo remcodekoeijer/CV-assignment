@@ -65,9 +65,9 @@ Scene3DRenderer::Scene3DRenderer(
 	m_current_frame = 0;
 	m_previous_frame = -1;
 
-	const int H = 0;
-	const int S = 0;
-	const int V = 0;
+	const int H = 20;
+	const int S = 50;
+	const int V = 25;
 	m_h_threshold = H;
 	m_ph_threshold = H;
 	m_s_threshold = S;
@@ -146,6 +146,9 @@ void Scene3DRenderer::processForeground(
 	bitwise_or(foreground, background, foreground);
 
 	// Improve the foreground image
+	Mat element = getStructuringElement(0, Size(3, 3), Point(-1, -1));
+	erode(foreground, foreground, element);
+	//dilate(foreground, foreground, element);
 
 	camera->setForegroundImage(foreground);
 }
