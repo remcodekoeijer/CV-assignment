@@ -59,7 +59,7 @@ bool Camera::initialize()
 {
 	m_initialized = true;
 
-	Mat bg_image, bg_frame, bg_avg;
+	Mat bg_image, bg_frame;
 
 	//Get a bg image from the bg video
 	VideoCapture bg_video;
@@ -67,33 +67,24 @@ bool Camera::initialize()
 	int frameCount = bg_video.get(CV_CAP_PROP_FRAME_COUNT);
 	
 	bg_video >> bg_frame;
-	/* //Get the first frame from the background.avi and use it as background.png
+	//Get the first frame from the background.avi and use it as background.png
 	if (!bg_frame.empty())
 	{
 		bg_image = bg_frame;
-		bg_video >> bg_frame;
 	}
 	else
 	{
 		cout << "No frame found in " + m_data_path + "background.avi";
 	}
-	*/
 
 	int pixelCount = bg_frame.cols * bg_frame.rows;
-
-	//Create 6 mat for all pixels and insert a mean and standard deviation value
-	Mat hMean(pixelCount, 1, bg_frame.type());
-	Mat hVar(pixelCount, 1, bg_frame.type()); 
-	Mat sMean(pixelCount, 1, bg_frame.type()); 
-	Mat sVar(pixelCount, 1, bg_frame.type()); 
-	Mat vMean(pixelCount, 1, bg_frame.type()); 
-	Mat vVar(pixelCount, 1, bg_frame.type());
 	
 	//Create a matrix with all the pixels (rows*cols) in the rows, and the frames in the cols
 	Mat all_Pixels(pixelCount, frameCount, bg_frame.type());
 
-	vector<Scalar> means(pixelCount);
-	vector<Scalar> vars(pixelCount);
+	//These vectors contain all the mean and var scalars for every individual pixel
+	means.resize(pixelCount);
+	vars.resize(pixelCount);
 
 	int currentFrame = 0;
 	
@@ -119,9 +110,10 @@ bool Camera::initialize()
 	for (int rowNr = 0; rowNr < all_Pixels.rows; rowNr++)
 	{
 		meanStdDev(all_Pixels.row(rowNr), means[rowNr], vars[rowNr], noArray());
-	}	
+	}
 
 	imwrite(m_data_path + "background.png", bg_image);
+
 
 	if (General::fexists(m_data_path + General::BackgroundImageFile))
 	{

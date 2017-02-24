@@ -31,6 +31,8 @@ class Camera
 
 	std::vector<cv::Mat> m_bg_hsv_channels;          // Background HSV channel images
 	cv::Mat m_foreground_image;                      // This camera's foreground image (binary)
+	std::vector<cv::Scalar> means;					 // Vector containing all mean scalars, per pixel
+	std::vector<cv::Scalar> vars;					 // Vector containing all var scalars, per pixel
 
 	cv::VideoCapture m_video;                        // Video reader
 
@@ -118,6 +120,16 @@ public:
 	const cv::Size& getSize() const
 	{
 		return m_plane_size;
+	}
+
+	cv::Scalar getHSVMeans(int index)
+	{
+		return means[index];
+	}
+
+	cv::Scalar getHSVVarss(int index)
+	{
+		return vars[index];
 	}
 
 	const cv::Mat& getForegroundImage() const

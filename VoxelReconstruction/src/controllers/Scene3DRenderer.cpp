@@ -13,6 +13,8 @@
 #include <opencv2/imgproc/types_c.h>
 #include <stddef.h>
 #include <string>
+#include <iostream>
+#include <sstream>
 
 #include "../utilities/General.h"
 
@@ -117,7 +119,7 @@ bool Scene3DRenderer::processFrame()
 }
 
 /**
- * Separate the background from the foreground
+ * Separate the background from the foreground for the current frame
  * ie.: Create an 8 bit image where only the foreground of the scene is white (255)
  */
 void Scene3DRenderer::processForeground(
@@ -130,25 +132,114 @@ void Scene3DRenderer::processForeground(
 	vector<Mat> channels;
 	split(hsv_image, channels);  // Split the HSV-channels for further analysis
 
+	//================================================================================================================
 	// Background subtraction H
-	Mat tmp, foreground, background;
-	absdiff(channels[0], camera->getBgHsvChannels().at(0), tmp);
-	threshold(tmp, foreground, m_h_threshold, 255, CV_THRESH_BINARY);
+	vector<Mat> means;
+	Mat hMean(channels[0].rows, channels[0].cols, channels[0].type());
+	split(hsv_image, means);
+	
+	//The problem is creating the mat with the means. for some reason it crashes in debug mode, since in release it doesnt consider out of range errors.
+	//below are a few tests that give an error, since not all .at are crashing, but the first one does work. it's strange
+	uchar test = camera->getHSVMeans(300 + 300 * hMean.cols)[0];
+	uchar test2 = camera->getHSVMeans(400 + 100 * hMean.cols)[0];
+	uchar test3 = camera->getHSVMeans(643 + 485 * hMean.cols)[0];
+	hMean.at<Vec3b>(10, 10) = test;
+	hMean.at<Vec3b>(485, 643) = test3;
+	hMean.at<Vec3b>(300, 300) = test;
+	hMean.at<Vec3b>(100, 400) = test2;
 
+	for (int y = 0; y < hMean.rows; y++)
+	{
+		for (int x = 0; x < hMean.cols; x++)
+		{
+			hMean.at<Vec3b>(y, x) = camera->getHSVMeans(x + y * hMean.cols)[0]; //Mat with mean h-values
+		}
+	}
+	
+	cout << (float)hMean.at<Vec3b>(300, 300)[0] << '\n';
+	cout << (float)hMean.at<Vec3b>(100, 400)[0] << '\n';
+
+	cout << (float)hMean.at<Vec3b>(485, 643)[0] << '\n';
+	Mat tmp, foreground, background;
+	
+	absdiff(channels[0], hMean, tmp); //get the difference
+
+
+	threshold(tmp, foreground, camera->getHSVVarss(10000)[0], 255, CV_THRESH_BINARY); //now foreground is not empty, bit ugly...
+
+	//threshold per pixel, since each pixel has a different variance
+	/*
+	for (int y = 0; y < tmp.rows; y++)
+	{
+		for (int x = 0; x < tmp.cols; x++)
+		{
+			if (tmp.at<Vec3b>(y, x)[0] < camera->getHSVVarss(x + y * tmp.cols)[0])
+				foreground.at<Vec3b>(y, x)[0] = 255;
+			else
+				foreground.at<Vec3b>(y, x)[0] = 0;
+		}
+	}
+	*/
+	//================================================================================================================
 	// Background subtraction S
-	absdiff(channels[1], camera->getBgHsvChannels().at(1), tmp);
-	threshold(tmp, background, m_s_threshold, 255, CV_THRESH_BINARY);
+	for (int y = 0; y < means[1].rows; y++)
+	{
+		for (int x = 0; x < means[1].cols; x++)
+		{
+			means[1].at<Vec3b>(y, x)[1] = camera->getHSVMeans(x + y * means[1].cols)[1]; 
+		}
+	}
+
+	absdiff(channels[1], means[1], tmp);
+	threshold(tmp, background, camera->getHSVVarss(10000)[1], 255, CV_THRESH_BINARY); //now background is not empty, bit ugly...
+	
+	//threshold per pixel, since each pixel has a different variance
+	/*
+	for (int y = 0; y < tmp.rows; y++)
+	{
+		for (int x = 0; x < tmp.cols; x++)
+		{
+			if (tmp.at<Vec3b>(y, x)[1] < camera->getHSVVarss(x + y * tmp.cols)[1])
+				background.at<Vec3b>(y, x)[1] = 255;
+			else
+				background.at<Vec3b>(y, x)[1] = 0;
+		}
+	}
+	*/
 	bitwise_and(foreground, background, foreground);
 
+	//================================================================================================================
 	// Background subtraction V
-	absdiff(channels[2], camera->getBgHsvChannels().at(2), tmp);
-	threshold(tmp, background, m_v_threshold, 255, CV_THRESH_BINARY);
+	for (int y = 0; y < means[2].rows; y++)
+	{
+		for (int x = 0; x < means[2].cols; x++)
+		{
+			means[2].at<Vec3b>(y, x)[0] = camera->getHSVMeans(x + y * means[2].cols)[2]; 
+		}
+	}
+
+	absdiff(channels[2], means[2], tmp);
+	threshold(tmp, background, camera->getHSVVarss(10000)[2], 255, CV_THRESH_BINARY);
+	//threshold per pixel
+	/*
+	for (int y = 0; y < tmp.rows; y++)
+	{
+		for (int x = 0; x < tmp.cols; x++)
+		{
+			if (tmp.at<Vec3b>(y, x)[2] < camera->getHSVVarss(x + y * tmp.cols)[2])
+				background.at<Vec3b>(y, x)[2] = 255;
+			else
+				background.at<Vec3b>(y, x)[2] = 0;
+		}
+	}
+	*/
 	bitwise_or(foreground, background, foreground);
 
+	//=============================================================
 	// Improve the foreground image
 	Mat element = getStructuringElement(0, Size(3, 3), Point(-1, -1));
 	erode(foreground, foreground, element);
-	//dilate(foreground, foreground, element);
+	dilate(foreground, foreground, element);
 
 	camera->setForegroundImage(foreground);
 }
