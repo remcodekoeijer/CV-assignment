@@ -132,83 +132,57 @@ namespace nl_uu_science_gmt
 		vector<Mat> channels;
 		split(hsv_image, channels);  // Split the HSV-channels for further analysis
 
-									 //================================================================================================================
-									 // Background subtraction H
-		vector<Mat> means;
-		Mat hMean(channels[0].rows, channels[0].cols, hsv_image.type());
-		split(hMean, means);
-		cout << hMean.size() << endl;
-		//split(hsv_image, means);
-		//The problem is creating the mat with the means. for some reason it crashes in debug mode, since in release it doesnt consider out of range errors.
-		//below are a few tests that give an error, since not all .at are crashing, but the first one does work. it's strange
-		//Vec3f test = camera->getHSVMeans(300 + 300 * hMean.cols)[0];
-		//uchar test2 = camera->getHSVMeans(400 + 100 * hMean.cols)[0];
-		//uchar test3 = camera->getHSVMeans(643 + 485 * hMean.cols)[0];
-		cout << channels[0].rows << endl;
-		cout << channels[0].cols << endl;
-		//cout << hMean.at<uchar>(10, 10) << endl;
-		//cout << hMean.at<uchar>(485, 643) << endl;
-		////hMean.at<uchar>(485, 643) = test3;
-		//cout<<hMean.at<uchar>(485, 643) << endl;
-		////hMean.at<Vec3b>(300, 300) = test;
-		////hMean.at<Vec3b>(100, 400) = test2;
-		//cout << hMean.rows << endl;
-		//cout << hMean.at<Vec3b>(100, 400) << endl;
-		//cout << hMean << endl;
-		cout << camera->getHSVMeans(1) << endl;
+		vector<Mat> means; //3 Matrices for the h, v and s means
+		split(hsv_image, means); //Get the 3 channels
 
-		for (int y = 0; y <hMean.rows; y++)
+		//================================================================================================================
+		// Background subtraction H
+
+		//Create the h mean mat
+		for (int y = 0; y <means[0].rows; y++)
 		{
-			for (int x = 0; x < hMean.cols; x++)
+			for (int x = 0; x < means[0].cols; x++)
 			{
-				uchar data = means[0].at<uchar>(y, x);
-				//cout << data << endl;
-				Scalar test = camera->getHSVMeans(x + y * hMean.cols);
-				//cout << test << endl;
-				data=test[0];
-				means[0].at<uchar>(y, x) = data; //Mat with mean h-values
+				Scalar pixel = camera->getHSVMeans(x + y * means[0].cols);
+				means[0].at<uchar>(y, x) = roundf(pixel[0]);
 			}
 		}
 
-
 		Mat tmp, foreground, background;
-	
-		absdiff(channels[0], means[0], tmp); //get the difference
 
+		absdiff(channels[0], means.at(0), tmp); //get the difference
 
-		threshold(tmp, foreground, camera->getHSVVarss(10000)[0], 255, CV_THRESH_BINARY); //now foreground is not empty, bit ugly...
+		threshold(tmp, foreground, camera->getHSVVarss(10000)[0] / 2, 255, CV_THRESH_BINARY); //now foreground is not empty, bit ugly...
 
-																						  //threshold per pixel, since each pixel has a different variance
-																						  /*
-																						  for (int y = 0; y < tmp.rows; y++)
-																						  {
-																						  for (int x = 0; x < tmp.cols; x++)
-																						  {
-																						  if (tmp.at<Vec3b>(y, x)[0] < camera->getHSVVarss(x + y * tmp.cols)[0])
-																						  foreground.at<Vec3b>(y, x)[0] = 255;
-																						  else
-																						  foreground.at<Vec3b>(y, x)[0] = 0;
-																						  }
-																						  }
-																						  */
-																						  //================================================================================================================
-		//bitwise_and(foreground, background, foreground);
+		//threshold per pixel, since each pixel has a different variance
+		/*
+		for (int y = 0; y < tmp.rows; y++)
+		{
+			for (int x = 0; x < tmp.cols; x++)
+			{
+				if (tmp.at<Vec3b>(y, x)[0] < camera->getHSVVarss(x + y * tmp.cols)[0])
+					foreground.at<Vec3b>(y, x)[0] = 255;
+				else
+					foreground.at<Vec3b>(y, x)[0] = 0;
+			}
+		}
+		*/
 
+		//================================================================================================================
 		// Background subtraction S
-		for (int y = 0; y < means[1].rows; y++)
+
+		//Create the s mean mat
+		for (int y = 0; y <means[1].rows; y++)
 		{
 			for (int x = 0; x < means[1].cols; x++)
 			{
-				uchar data = means[1].at<uchar>(y, x);
-				//cout << data << endl;
-				Vec3b test = camera->getHSVMeans(x + y * hMean.cols)[1];
-				data = test[1];
-				means[1].at<uchar>(y, x) = data;
+				Scalar pixel = camera->getHSVMeans(x + y * means[1].cols);
+				means[1].at<uchar>(y, x) = roundf(pixel[1]);
 			}
 		}
 
 		absdiff(channels[1], means[1], tmp);
-		threshold(tmp, background, camera->getHSVVarss(10000)[1], 255, CV_THRESH_BINARY); //now background is not empty, bit ugly...
+		threshold(tmp, background, camera->getHSVVarss(10000)[1] / 2, 255, CV_THRESH_BINARY); //now background is not empty, bit ugly...
 
 																						  //threshold per pixel, since each pixel has a different variance
 																						  /*
@@ -228,20 +202,18 @@ namespace nl_uu_science_gmt
 		//================================================================================================================
 		// Background subtraction V
 
-		for (int y = 0; y < means[2].rows; y++)
+		//Create the h mean mat
+		for (int y = 0; y <means[2].rows; y++)
 		{
 			for (int x = 0; x < means[2].cols; x++)
 			{
-				uchar data = means[2].at<uchar>(y, x);
-				//cout << data << endl;
-				Vec3b test = camera->getHSVMeans(x + y * hMean.cols)[2];
-				data = test[2];
-				means[2].at<uchar>(y, x) = data;
+				Scalar pixel = camera->getHSVMeans(x + y * means[2].cols);
+				means[2].at<uchar>(y, x) = roundf(pixel[2]);
 			}
 		}
 
 		absdiff(channels[2], means[2], tmp);
-		threshold(tmp, background, camera->getHSVVarss(10000)[2], 255, CV_THRESH_BINARY);
+		threshold(tmp, background, camera->getHSVVarss(10000)[2] / 2, 255, CV_THRESH_BINARY);
 		//threshold per pixel
 		/*
 		for (int y = 0; y < tmp.rows; y++)
@@ -255,7 +227,9 @@ namespace nl_uu_science_gmt
 		}
 		}
 		*/
+
 		bitwise_or(foreground, background, foreground);
+
 		//=============================================================
 		// Improve the foreground image
 		Mat element = getStructuringElement(0, Size(3, 3), Point(-1, -1));

@@ -88,21 +88,25 @@ bool Camera::initialize()
 
 	int currentFrame = 0;
 	
+	Mat hsv_bg_image;
+
 	//Per frame..
 	while (!bg_frame.empty())
 	{
+		cvtColor(bg_frame, hsv_bg_image, CV_BGR2HSV);
 		for (int y = 0; y < bg_frame.rows; y++)
 		{
 			for (int x = 0; x < bg_frame.cols; x++)
 			{
 				//..get the hsv values from pixel x,y in the image and insert them as seperate channels in the all_pixels
-				Vec3b pixel = bg_frame.at<Vec3b>(y, x); 
-				all_Pixels.at<Vec3b>(x + y*bg_frame.cols, currentFrame)[0] = pixel.val[0];
-				all_Pixels.at<Vec3b>(x + y*bg_frame.cols, currentFrame)[1] = pixel.val[1];
-				all_Pixels.at<Vec3b>(x + y*bg_frame.cols, currentFrame)[2] = pixel.val[2];				
+				Vec3b pixel = hsv_bg_image.at<Vec3b>(y, x);
+				all_Pixels.at<Vec3b>(x + y*hsv_bg_image.cols, currentFrame)[0] = pixel.val[0];
+				all_Pixels.at<Vec3b>(x + y*hsv_bg_image.cols, currentFrame)[1] = pixel.val[1];
+				all_Pixels.at<Vec3b>(x + y*hsv_bg_image.cols, currentFrame)[2] = pixel.val[2];
 			}
 		}
 		currentFrame++;
+		cout << "current frame: " << currentFrame << endl;
 		bg_video >> bg_frame;
 	}
 
