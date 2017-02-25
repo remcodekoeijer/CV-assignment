@@ -106,8 +106,9 @@ bool Camera::initialize()
 			}
 		}
 		currentFrame++;
-		cout << "current frame: " << currentFrame << endl;
+		//cout << "current frame: " << currentFrame << endl;
 		bg_video >> bg_frame;
+		
 	}
 
 	//Per row, and thus per pixel, get the mean and stdev

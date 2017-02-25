@@ -126,15 +126,16 @@ namespace nl_uu_science_gmt
 		Camera* camera)
 	{
 		assert(!camera->getFrame().empty());
-		Mat hsv_image;
+		Mat hsv_image,hsv_image2;
 		cvtColor(camera->getFrame(), hsv_image, CV_BGR2HSV);  // from BGR to HSV color space
 
 		vector<Mat> channels;
 		split(hsv_image, channels);  // Split the HSV-channels for further analysis
-
+		
 		vector<Mat> means; //3 Matrices for the h, v and s means
 		split(hsv_image, means); //Get the 3 channels
 
+		
 		//================================================================================================================
 		// Background subtraction H
 
@@ -148,26 +149,40 @@ namespace nl_uu_science_gmt
 			}
 		}
 
-		Mat tmp, foreground, background;
+		cout << "channels" << channels[0].size() << endl;
+		//tmp.copySize(foreground);
+		//tmp.copySize(background);
+		Mat tmp;
 
-		absdiff(channels[0], means.at(0), tmp); //get the difference
 
-		threshold(tmp, foreground, camera->getHSVVarss(10000)[0] / 2, 255, CV_THRESH_BINARY); //now foreground is not empty, bit ugly...
-
+		int tr = channels[0].rows;
+		int tc = channels[0].cols;
+		int tt = channels[0].type();
+		Mat  foreground(tr, tc, tt), background(tr, tc, tt);
+		
+		absdiff(channels[0], means.at(0), tmp);
+		//threshold(tmp, foreground, camera->getHSVVarss(10000)[0] / 2, 255, CV_THRESH_BINARY); //now foreground is not empty, bit ugly...
+		cout << (int)tmp.at<Vec3b>(0, 0)[0] <<  endl;
 		//threshold per pixel, since each pixel has a different variance
-		/*
 		for (int y = 0; y < tmp.rows; y++)
 		{
 			for (int x = 0; x < tmp.cols; x++)
 			{
 				if (tmp.at<Vec3b>(y, x)[0] < camera->getHSVVarss(x + y * tmp.cols)[0])
-					foreground.at<Vec3b>(y, x)[0] = 255;
+				{
+					uchar pixel = 0;
+					foreground.at<uchar>(y, x) = pixel;
+				}
 				else
-					foreground.at<Vec3b>(y, x)[0] = 0;
+				{
+					uchar pixel = 255;
+					foreground.at<uchar>(y, x) = pixel;
+				}
+			LOOP:;
 			}
 		}
-		*/
-
+		imshow("for2", foreground);
+		
 		//================================================================================================================
 		// Background subtraction S
 
@@ -181,11 +196,29 @@ namespace nl_uu_science_gmt
 			}
 		}
 
-		absdiff(channels[1], means[1], tmp);
-		threshold(tmp, background, camera->getHSVVarss(10000)[1] / 2, 255, CV_THRESH_BINARY); //now background is not empty, bit ugly...
+		absdiff(channels[1], means.at(1), tmp);
 
-																						  //threshold per pixel, since each pixel has a different variance
-																						  /*
+		////threshold(tmp, background, camera->getHSVVarss(10000)[1] / 2, 255, CV_THRESH_BINARY); //now background is not empty, bit ugly...
+
+		for (int y = 0; y < tmp.rows; y++)
+		{
+			for (int x = 0; x < tmp.cols; x++)
+			{
+				//	cout << foreground.at<Vec3b>(y, x)[0] << endl;
+				//cout << (int)forMeans[0].at<uchar>(y, x) << endl;
+				if (tmp.at<Vec3b>(y, x)[1] < camera->getHSVVarss(x + y * tmp.cols)[1])
+				{
+					uchar pixel = 0;
+					background.at<uchar>(y, x) = pixel;
+				}
+				else
+				{
+					uchar pixel = 255;
+					background.at<uchar>(y, x) = pixel;
+				}
+			}
+		}																				  //threshold per pixel, since each pixel has a different variance
+																		  /*
 																						  for (int y = 0; y < tmp.rows; y++)
 																						  {
 																						  for (int x = 0; x < tmp.cols; x++)
@@ -197,8 +230,8 @@ namespace nl_uu_science_gmt
 																						  }
 																						  }
 																						  */
+		
 		bitwise_and(foreground, background, foreground);
-
 		//================================================================================================================
 		// Background subtraction V
 
@@ -212,30 +245,36 @@ namespace nl_uu_science_gmt
 			}
 		}
 
-		absdiff(channels[2], means[2], tmp);
-		threshold(tmp, background, camera->getHSVVarss(10000)[2] / 2, 255, CV_THRESH_BINARY);
-		//threshold per pixel
-		/*
+		absdiff(channels[2], means.at(2), tmp);
+		////threshold(tmp, background, camera->getHSVVarss(10000)[2] / 2, 255, CV_THRESH_BINARY);
+
+
 		for (int y = 0; y < tmp.rows; y++)
 		{
-		for (int x = 0; x < tmp.cols; x++)
-		{
-		if (tmp.at<Vec3b>(y, x)[2] < camera->getHSVVarss(x + y * tmp.cols)[2])
-		background.at<Vec3b>(y, x)[2] = 255;
-		else
-		background.at<Vec3b>(y, x)[2] = 0;
+			for (int x = 0; x < tmp.cols; x++)
+			{
+				
+				if (tmp.at<Vec3b>(y, x)[2] < camera->getHSVVarss(x + y * tmp.cols)[2])
+				{
+					uchar pixel = 0;
+					background.at<uchar>(y, x) = pixel;
+				}
+				else
+				{
+					uchar pixel = 255;
+					background.at<uchar>(y, x) = pixel;
+				}
+			}
 		}
-		}
-		*/
+		
 
 		bitwise_or(foreground, background, foreground);
-
 		//=============================================================
 		// Improve the foreground image
 		Mat element = getStructuringElement(0, Size(3, 3), Point(-1, -1));
 		erode(foreground, foreground, element);
 		dilate(foreground, foreground, element);
-		//cout << camera->getHSVMeans(1) << endl;
+		
 		camera->setForegroundImage(foreground);
 	}
 
