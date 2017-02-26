@@ -140,7 +140,7 @@ namespace nl_uu_science_gmt
 		// Background subtraction H
 
 		//Create the h mean mat
-		for (int y = 0; y <means[0].rows; y++)
+		for (int y = 0; y < means[0].rows; y++)
 		{
 			for (int x = 0; x < means[0].cols; x++)
 			{
@@ -164,11 +164,12 @@ namespace nl_uu_science_gmt
 		//threshold(tmp, foreground, camera->getHSVVarss(10000)[0] / 2, 255, CV_THRESH_BINARY); //now foreground is not empty, bit ugly...
 		cout << (int)tmp.at<Vec3b>(0, 0)[0] <<  endl;
 		//threshold per pixel, since each pixel has a different variance
+		
 		for (int y = 0; y < tmp.rows; y++)
 		{
 			for (int x = 0; x < tmp.cols; x++)
 			{
-				if (tmp.at<Vec3b>(y, x)[0] < camera->getHSVVarss(x + y * tmp.cols)[0])
+				if (tmp.at<uchar>(y, x) < camera->getHSVVarss(x + y * tmp.cols)[0])
 				{
 					uchar pixel = 0;
 					foreground.at<uchar>(y, x) = pixel;
@@ -178,9 +179,10 @@ namespace nl_uu_science_gmt
 					uchar pixel = 255;
 					foreground.at<uchar>(y, x) = pixel;
 				}
-			LOOP:;
+			//LOOP:;
 			}
 		}
+
 		imshow("for2", foreground);
 		
 		//================================================================================================================
@@ -206,7 +208,7 @@ namespace nl_uu_science_gmt
 			{
 				//	cout << foreground.at<Vec3b>(y, x)[0] << endl;
 				//cout << (int)forMeans[0].at<uchar>(y, x) << endl;
-				if (tmp.at<Vec3b>(y, x)[1] < camera->getHSVVarss(x + y * tmp.cols)[1])
+				if (tmp.at<uchar>(y, x) < camera->getHSVVarss(x + y * tmp.cols)[1])
 				{
 					uchar pixel = 0;
 					background.at<uchar>(y, x) = pixel;
@@ -217,19 +219,7 @@ namespace nl_uu_science_gmt
 					background.at<uchar>(y, x) = pixel;
 				}
 			}
-		}																				  //threshold per pixel, since each pixel has a different variance
-																		  /*
-																						  for (int y = 0; y < tmp.rows; y++)
-																						  {
-																						  for (int x = 0; x < tmp.cols; x++)
-																						  {
-																						  if (tmp.at<Vec3b>(y, x)[1] < camera->getHSVVarss(x + y * tmp.cols)[1])
-																						  background.at<Vec3b>(y, x)[1] = 255;
-																						  else
-																						  background.at<Vec3b>(y, x)[1] = 0;
-																						  }
-																						  }
-																						  */
+		}
 		
 		bitwise_and(foreground, background, foreground);
 		//================================================================================================================
@@ -254,7 +244,7 @@ namespace nl_uu_science_gmt
 			for (int x = 0; x < tmp.cols; x++)
 			{
 				
-				if (tmp.at<Vec3b>(y, x)[2] < camera->getHSVVarss(x + y * tmp.cols)[2])
+				if (tmp.at<uchar>(y, x) < camera->getHSVVarss(x + y * tmp.cols)[2])
 				{
 					uchar pixel = 0;
 					background.at<uchar>(y, x) = pixel;
