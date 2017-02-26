@@ -148,12 +148,7 @@ namespace nl_uu_science_gmt
 				means[0].at<uchar>(y, x) = roundf(pixel[0]);
 			}
 		}
-
-		cout << "channels" << channels[0].size() << endl;
-		//tmp.copySize(foreground);
-		//tmp.copySize(background);
 		Mat tmp;
-
 
 		int tr = channels[0].rows;
 		int tc = channels[0].cols;
@@ -161,15 +156,14 @@ namespace nl_uu_science_gmt
 		Mat  foreground(tr, tc, tt), background(tr, tc, tt);
 		
 		absdiff(channels[0], means.at(0), tmp);
-		//threshold(tmp, foreground, camera->getHSVVarss(10000)[0] / 2, 255, CV_THRESH_BINARY); //now foreground is not empty, bit ugly...
-		cout << (int)tmp.at<Vec3b>(0, 0)[0] <<  endl;
+		//threshold(tmp, foreground, camera->getHSVVarss(10000)[0] / 2, 255, CV_THRESH_BINARY); 
+
 		//threshold per pixel, since each pixel has a different variance
-		
 		for (int y = 0; y < tmp.rows; y++)
 		{
 			for (int x = 0; x < tmp.cols; x++)
 			{
-				if (tmp.at<uchar>(y, x) < camera->getHSVVarss(x + y * tmp.cols)[0])
+				if (tmp.at<uchar>(y, x) < 1.5 * camera->getHSVVarss(x + y * tmp.cols)[0])
 				{
 					uchar pixel = 0;
 					foreground.at<uchar>(y, x) = pixel;
@@ -183,8 +177,6 @@ namespace nl_uu_science_gmt
 			}
 		}
 
-		imshow("for2", foreground);
-		
 		//================================================================================================================
 		// Background subtraction S
 
@@ -208,7 +200,7 @@ namespace nl_uu_science_gmt
 			{
 				//	cout << foreground.at<Vec3b>(y, x)[0] << endl;
 				//cout << (int)forMeans[0].at<uchar>(y, x) << endl;
-				if (tmp.at<uchar>(y, x) < camera->getHSVVarss(x + y * tmp.cols)[1])
+				if (tmp.at<uchar>(y, x) < 1.5 * camera->getHSVVarss(x + y * tmp.cols)[1])
 				{
 					uchar pixel = 0;
 					background.at<uchar>(y, x) = pixel;
@@ -244,7 +236,7 @@ namespace nl_uu_science_gmt
 			for (int x = 0; x < tmp.cols; x++)
 			{
 				
-				if (tmp.at<uchar>(y, x) < camera->getHSVVarss(x + y * tmp.cols)[2])
+				if (tmp.at<uchar>(y, x) < 1.5 * camera->getHSVVarss(x + y * tmp.cols)[2])
 				{
 					uchar pixel = 0;
 					background.at<uchar>(y, x) = pixel;
@@ -256,7 +248,6 @@ namespace nl_uu_science_gmt
 				}
 			}
 		}
-		
 
 		bitwise_or(foreground, background, foreground);
 		//=============================================================
