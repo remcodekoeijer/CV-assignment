@@ -14,6 +14,5 @@ VoxelReconstruction/x64/
 VoxelReconstruction/data/cam3/video.avi
 VoxelReconstruction/data/cam3/intrinsics.avi
 VoxelReconstruction/data/cam4/background.avi
-*.avi
 VoxelReconstruction/VoxelReconstruction.VC.VC.opendb
 VoxelReconstruction/VoxelReconstruction.VC.db
