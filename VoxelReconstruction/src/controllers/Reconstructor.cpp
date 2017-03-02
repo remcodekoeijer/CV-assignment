@@ -138,14 +138,17 @@ void Reconstructor::initialize()
 					if (point.x >= 0 && point.x < m_plane_size.width && point.y >= 0 && point.y < m_plane_size.height)
 						voxel->valid_camera_projection[(int) c] = 1;
 				}
-
 				//Writing voxel 'p' is not critical as it's unique (thread safe)
 				m_voxels[p] = voxel;
 			}
 		}
+		
 	}
 
+	
+	
 	cout << "done!" << endl;
+	
 }
 
 /**
@@ -185,6 +188,23 @@ void Reconstructor::update()
 	}
 
 	m_visible_voxels.insert(m_visible_voxels.end(), visible_voxels.begin(), visible_voxels.end());
+
+	
+
+	
+		int clusterCount = 4;
+		Mat positions(m_visible_voxels.size(), 2, CV_32F);
+		Mat center(clusterCount, 2, CV_32F), bestlabels(m_visible_voxels.size(), 2, CV_32F);
+	    //get points of voxels (x,y)
+		for (int r = 0; r<m_visible_voxels.size(); r++)
+		{
+			positions.at<float>(r, 0) = m_visible_voxels[r]->x;
+			positions.at<float>(r, 1) = m_visible_voxels[r]->y;
+		}
+		
+		kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.1), 3, KMEANS_PP_CENTERS, center);
+	
+	
 }
 
 } /* namespace nl_uu_science_gmt */
