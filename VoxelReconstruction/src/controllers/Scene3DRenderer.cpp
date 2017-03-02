@@ -163,7 +163,7 @@ namespace nl_uu_science_gmt
 		{
 			for (int x = 0; x < tmp.cols; x++)
 			{
-				if (tmp.at<uchar>(y, x) < 1.5 * camera->getHSVVarss(x + y * tmp.cols)[0])
+				if (tmp.at<uchar>(y, x) < 1 * camera->getHSVVarss(x + y * tmp.cols)[0])
 				{
 					uchar pixel = 0;
 					foreground.at<uchar>(y, x) = pixel;
@@ -192,15 +192,11 @@ namespace nl_uu_science_gmt
 
 		absdiff(channels[1], means.at(1), tmp);
 
-		////threshold(tmp, background, camera->getHSVVarss(10000)[1] / 2, 255, CV_THRESH_BINARY); //now background is not empty, bit ugly...
-
 		for (int y = 0; y < tmp.rows; y++)
 		{
 			for (int x = 0; x < tmp.cols; x++)
 			{
-				//	cout << foreground.at<Vec3b>(y, x)[0] << endl;
-				//cout << (int)forMeans[0].at<uchar>(y, x) << endl;
-				if (tmp.at<uchar>(y, x) < 1.5 * camera->getHSVVarss(x + y * tmp.cols)[1])
+				if (tmp.at<uchar>(y, x) < 1 * camera->getHSVVarss(x + y * tmp.cols)[1])
 				{
 					uchar pixel = 0;
 					background.at<uchar>(y, x) = pixel;
@@ -228,15 +224,13 @@ namespace nl_uu_science_gmt
 		}
 
 		absdiff(channels[2], means.at(2), tmp);
-		////threshold(tmp, background, camera->getHSVVarss(10000)[2] / 2, 255, CV_THRESH_BINARY);
-
 
 		for (int y = 0; y < tmp.rows; y++)
 		{
 			for (int x = 0; x < tmp.cols; x++)
 			{
 				
-				if (tmp.at<uchar>(y, x) < 1.5 * camera->getHSVVarss(x + y * tmp.cols)[2])
+				if (tmp.at<uchar>(y, x) < 2.5 * camera->getHSVVarss(x + y * tmp.cols)[2])
 				{
 					uchar pixel = 0;
 					background.at<uchar>(y, x) = pixel;
