@@ -28,8 +28,8 @@ namespace nl_uu_science_gmt
 Reconstructor::Reconstructor(
 		const vector<Camera*> &cs) :
 				m_cameras(cs),
-				m_height(2048),
-				m_step(32)
+				m_height(4096),
+				m_step(64)
 {
 	for (size_t c = 0; c < m_cameras.size(); ++c)
 	{
@@ -192,17 +192,17 @@ void Reconstructor::update()
 	
 
 	
-		int clusterCount = 4;
-		Mat positions(m_visible_voxels.size(), 2, CV_32F);
-		Mat center(clusterCount, 2, CV_32F), bestlabels(m_visible_voxels.size(), 2, CV_32F);
-	    //get points of voxels (x,y)
-		for (int r = 0; r<m_visible_voxels.size(); r++)
-		{
-			positions.at<float>(r, 0) = m_visible_voxels[r]->x;
-			positions.at<float>(r, 1) = m_visible_voxels[r]->y;
-		}
-		
-		kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.1), 3, KMEANS_PP_CENTERS, center);
+		//int clusterCount = 4;
+		//Mat positions(m_visible_voxels.size(), 2, CV_32F);
+		//Mat center(clusterCount, 2, CV_32F), bestlabels(m_visible_voxels.size(), 2, CV_32F);
+		////get points of voxels (x,y)
+		//for (int r = 0; r < m_visible_voxels.size(); r++)
+		//{
+		//	positions.at<float>(r, 0) = m_visible_voxels[r]->x;
+		//	positions.at<float>(r, 1) = m_visible_voxels[r]->y;
+		//}
+
+		//kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.1), 3, KMEANS_PP_CENTERS, center);
 	
 	
 }

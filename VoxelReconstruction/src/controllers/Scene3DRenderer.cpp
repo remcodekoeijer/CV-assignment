@@ -16,7 +16,9 @@
 #include <iostream>
 #include <sstream>
 
+
 #include "../utilities/General.h"
+
 
 using namespace std;
 using namespace cv;
@@ -48,7 +50,7 @@ namespace nl_uu_science_gmt
 		m_show_arcball = false;
 		m_show_info = true;
 		m_fullscreen = false;
-
+		
 		// Read the checkerboard properties (XML)
 		FileStorage fs;
 		fs.open(m_cameras.front()->getDataPath() + ".." + string(PATH_SEP) + General::CBConfigFile, FileStorage::READ);
@@ -113,8 +115,83 @@ namespace nl_uu_science_gmt
 				m_cameras[c]->getVideoFrame(m_current_frame);
 			}
 			assert(m_cameras[c] != NULL);
+			
 			processForeground(m_cameras[c]);
+
 		}
+		//===============================================================================================================
+		//voxel stuff
+		//get the visible voxels from frame 10 ,from 1st camera ,maybe save for all cameras?
+		for (size_t c = 0; c < m_cameras.size(); ++c)
+		{
+			if (m_current_frame == 10 && m_camera_view && c==1) //not sure how to access cameras points it just takes the first whatever...?
+			{
+
+				//voxel
+				vector<Reconstructor::Voxel*> visVoxels(m_reconstructor.getVisibleVoxels());
+				int clusterCount = 4;
+				int sizeOfVisVoxels = visVoxels.size();
+				Mat positions(sizeOfVisVoxels, 2, CV_32F);
+				Mat center, bestlabels;
+
+				//get points of voxels (x,y)
+				for (int r = 0; r < sizeOfVisVoxels; r++)
+				{
+					positions.at<float>(r, 0) = visVoxels[r]->x;
+					positions.at<float>(r, 1) = visVoxels[r]->y;
+				}
+
+				kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.1), 3, KMEANS_PP_CENTERS, center);
+
+
+				//project voxel points into image
+				vector<Point2d> points;
+				for (int i = 0; i < positions.rows; i++)
+				{
+					points.push_back(Point(positions.at<float>(i, 0), positions.at<float>(i, 1)));
+				}
+
+				vector<Point2d> centerPoints;
+				for (int i = 0; i < center.rows; i++)
+				{
+					centerPoints.push_back(Point(center.at<float>(i, 1), center.at<float>(i, 0)));
+				}
+				cout << centerPoints << endl;
+				//since origin is in the middle on voxel space move the centers to project on image
+				for (int i = 0; i < center.rows; i++)
+				{
+					centerPoints[i].y = (int)abs(centerPoints[i].y / 2);
+					centerPoints[i].x = (int)abs(centerPoints[i].x / 2);
+				}
+				cout << "corrected centerpoints; " << centerPoints << endl;
+
+				//Image show test
+				Mat testImage;
+				m_cameras[1]->getFrame().copyTo(testImage);
+				
+				//draw a pixel at the center points.. not really visible
+				for (int i = 0; i < centerPoints.size(); i++)
+				{
+					Vec3b pixel = testImage.at<Vec3b>(centerPoints[i].y, centerPoints[i].x);
+
+					pixel = (0, 255, 255);
+
+					testImage.at<Vec3b>(centerPoints[i].y, centerPoints[i].x) = pixel;
+
+				}
+				imshow("test", testImage);
+				//draw circles at the center points
+				circle(testImage, centerPoints[0], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(testImage, centerPoints[1], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(testImage, centerPoints[2], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(testImage, centerPoints[3], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				imshow("test2", testImage);
+				
+
+			}
+		}
+		//======================================================================================
+
 		return true;
 	}
 
@@ -126,6 +203,7 @@ namespace nl_uu_science_gmt
 		Camera* camera)
 	{
 		assert(!camera->getFrame().empty());
+
 		Mat hsv_image,hsv_image2;
 		cvtColor(camera->getFrame(), hsv_image, CV_BGR2HSV);  // from BGR to HSV color space
 
@@ -135,7 +213,7 @@ namespace nl_uu_science_gmt
 		vector<Mat> means; //3 Matrices for the h, v and s means
 		split(hsv_image, means); //Get the 3 channels
 
-		
+								
 		//================================================================================================================
 		// Background subtraction H
 
@@ -251,6 +329,7 @@ namespace nl_uu_science_gmt
 		dilate(foreground, foreground, element);
 		
 		camera->setForegroundImage(foreground);
+		
 	}
 
 	/**
