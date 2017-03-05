@@ -121,10 +121,9 @@ namespace nl_uu_science_gmt
 		}
 		//===============================================================================================================
 		//voxel stuff
-		//get the visible voxels from frame 10 ,from 1st camera ,maybe save for all cameras?
-		for (size_t c = 0; c < m_cameras.size(); ++c)
-		{
-			if (m_current_frame == 10 && m_camera_view && c==1) //not sure how to access cameras points it just takes the first whatever...?
+		//get the visible voxels from frame 10 ,maybe save for all cameras?
+		
+			if (m_current_frame == 10 && m_camera_view ) 
 			{
 
 				//voxel
@@ -140,29 +139,37 @@ namespace nl_uu_science_gmt
 					positions.at<float>(r, 0) = visVoxels[r]->x;
 					positions.at<float>(r, 1) = visVoxels[r]->y;
 				}
+				//cluster
+				kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.5), 3, KMEANS_PP_CENTERS, center);
 
-				kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.1), 3, KMEANS_PP_CENTERS, center);
 
-
-				//project voxel points into image
+				//project voxel points into image, not needed
 				vector<Point2d> points;
 				for (int i = 0; i < positions.rows; i++)
 				{
 					points.push_back(Point(positions.at<float>(i, 0), positions.at<float>(i, 1)));
 				}
-
+				//project cluster center into image,
 				vector<Point2d> centerPoints;
 				for (int i = 0; i < center.rows; i++)
 				{
 					centerPoints.push_back(Point(center.at<float>(i, 1), center.at<float>(i, 0)));
 				}
 				cout << centerPoints << endl;
+				//----------correct image---------
 				//since origin is in the middle on voxel space move the centers to project on image
 				for (int i = 0; i < center.rows; i++)
 				{
 					centerPoints[i].y = (int)abs(centerPoints[i].y / 2);
 					centerPoints[i].x = (int)abs(centerPoints[i].x / 2);
 				}
+				//distance from origin different for voxels and video so adjust points
+				vector<Point2d> centerPointsB;
+				centerPointsB.push_back(Point(centerPoints[3].x , centerPoints[3].y));
+				centerPointsB.push_back(Point(centerPoints[2].x -150, centerPoints[2].y ));
+				centerPointsB.push_back(Point(centerPoints[1].x , centerPoints[1].y));
+				centerPointsB.push_back(Point(centerPoints[0].x -150, centerPoints[0].y-80));
+
 				cout << "corrected centerpoints; " << centerPoints << endl;
 
 				//Image show test
@@ -180,16 +187,20 @@ namespace nl_uu_science_gmt
 
 				}
 				imshow("test", testImage);
+				//invert image, dont know must be a camera thing
+				Mat flipped;
+				flip(testImage, flipped, 1);
 				//draw circles at the center points
-				circle(testImage, centerPoints[0], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				circle(testImage, centerPoints[1], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				circle(testImage, centerPoints[2], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				circle(testImage, centerPoints[3], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				imshow("test2", testImage);
+				circle(flipped, centerPointsB[0], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(flipped, centerPointsB[1], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(flipped, centerPointsB[2], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(flipped, centerPointsB[3], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				imshow("test2", flipped);
+				//we can basically use the points around center to create a colour model.
 				
 
 			}
-		}
+		
 		//======================================================================================
 
 		return true;
