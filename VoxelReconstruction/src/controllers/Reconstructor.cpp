@@ -122,7 +122,7 @@ void Reconstructor::initialize()
 				voxel->x = x;
 				voxel->y = y;
 				voxel->z = z;
-
+				voxel->color = Scalar(0.5f, 0.5f, 0.5f, 1.0f);
 				voxel->camera_projection = vector<Point>(m_cameras.size());
 				voxel->valid_camera_projection = vector<int>(m_cameras.size(), 0);
 

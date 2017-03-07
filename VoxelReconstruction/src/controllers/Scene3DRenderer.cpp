@@ -126,7 +126,7 @@ namespace nl_uu_science_gmt
 		//voxel stuff
 		//get the visible voxels from frame 10 ,maybe save for all cameras?
 		
-			if (m_current_frame == 10 && m_camera_view ) 
+			if (m_current_frame <= 10 && m_camera_view ) 
 			{
 
 				//voxel
@@ -148,6 +148,12 @@ namespace nl_uu_science_gmt
 
 				//bestlabels corresponds to positions. so the first item in bestlabel is also first item in position. 
 				//
+				for (int r = 0; r < sizeOfVisVoxels; r++)
+				{
+					//how to change voxel color.
+					visVoxels[r]->color = Scalar(0.0f, 1.0f, 0.0f, 1.0f);
+					m_reconstructor.setVisibleVoxels(visVoxels);
+				}
 
 				//project voxel points into image, not needed
 				vector<Point2d> points;
