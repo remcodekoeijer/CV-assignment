@@ -122,6 +122,7 @@ void Reconstructor::initialize()
 				voxel->x = x;
 				voxel->y = y;
 				voxel->z = z;
+
 				voxel->camera_projection = vector<Point>(m_cameras.size());
 				voxel->valid_camera_projection = vector<int>(m_cameras.size(), 0);
 

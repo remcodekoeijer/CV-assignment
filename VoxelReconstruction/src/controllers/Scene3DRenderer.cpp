@@ -8,13 +8,16 @@
 #include "Scene3DRenderer.h"
 
 #include <opencv2/core/mat.hpp>
+#include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/imgproc/types_c.h>
 #include <stddef.h>
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <inttypes.h>
 
 
 #include "../utilities/General.h"
@@ -134,14 +137,17 @@ namespace nl_uu_science_gmt
 				Mat center, bestlabels;
 
 				//get points of voxels (x,y)
+				//TODO: ignore height of the voxels, so we dont need all visvoxels. only add the ones from the upper body. 
 				for (int r = 0; r < sizeOfVisVoxels; r++)
 				{
-					positions.at<float>(r, 0) = visVoxels[r]->x;
-					positions.at<float>(r, 1) = visVoxels[r]->y;
+					positions.at<float>(r, 0) = visVoxels[r]->y;
+					positions.at<float>(r, 1) = visVoxels[r]->x;
 				}
-				//cluster
+				//cluster. using KMEANS_PP_CENTERS gives uniformly distributed initial centers. this makes the chance of a local minimum very slim. 
 				kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.5), 3, KMEANS_PP_CENTERS, center);
 
+				//bestlabels corresponds to positions. so the first item in bestlabel is also first item in position. 
+				//
 
 				//project voxel points into image, not needed
 				vector<Point2d> points;
@@ -150,52 +156,24 @@ namespace nl_uu_science_gmt
 					points.push_back(Point(positions.at<float>(i, 0), positions.at<float>(i, 1)));
 				}
 				//project cluster center into image,
-				vector<Point2d> centerPoints;
+				vector<Point3d> centerPoints;
 				for (int i = 0; i < center.rows; i++)
 				{
-					centerPoints.push_back(Point(center.at<float>(i, 1), center.at<float>(i, 0)));
+					centerPoints.push_back(Point3d(center.at<float>(i, 1), center.at<float>(i, 0), 0));
 				}
-				cout << centerPoints << endl;
-				//----------correct image---------
-				//since origin is in the middle on voxel space move the centers to project on image
-				for (int i = 0; i < center.rows; i++)
-				{
-					centerPoints[i].y = (int)abs(centerPoints[i].y / 2);
-					centerPoints[i].x = (int)abs(centerPoints[i].x / 2);
-				}
-				//distance from origin different for voxels and video so adjust points
-				vector<Point2d> centerPointsB;
-				centerPointsB.push_back(Point(centerPoints[3].x , centerPoints[3].y));
-				centerPointsB.push_back(Point(centerPoints[2].x -150, centerPoints[2].y ));
-				centerPointsB.push_back(Point(centerPoints[1].x , centerPoints[1].y));
-				centerPointsB.push_back(Point(centerPoints[0].x -150, centerPoints[0].y-80));
+				vector<Point2d> projectedCenters;
 
-				cout << "corrected centerpoints; " << centerPoints << endl;
-
-				//Image show test
-				Mat testImage;
-				m_cameras[1]->getFrame().copyTo(testImage);
+				projectPoints(centerPoints, m_cameras[1]->getRvec(), m_cameras[1]->getTvec(), m_cameras[1]->getCamMatrix(), m_cameras[1]->getDistCoeff(), projectedCenters);
 				
-				//draw a pixel at the center points.. not really visible
-				for (int i = 0; i < centerPoints.size(); i++)
-				{
-					Vec3b pixel = testImage.at<Vec3b>(centerPoints[i].y, centerPoints[i].x);
-
-					pixel = (0, 255, 255);
-
-					testImage.at<Vec3b>(centerPoints[i].y, centerPoints[i].x) = pixel;
-
-				}
-				imshow("test", testImage);
 				//invert image, dont know must be a camera thing
-				Mat flipped;
-				flip(testImage, flipped, 1);
+				Mat test;
+				m_cameras[1]->getFrame().copyTo(test);
 				//draw circles at the center points
-				circle(flipped, centerPointsB[0], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				circle(flipped, centerPointsB[1], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				circle(flipped, centerPointsB[2], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				circle(flipped, centerPointsB[3], 50, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				imshow("test2", flipped);
+				circle(test, projectedCenters[0], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(test, projectedCenters[1], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(test, projectedCenters[2], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				circle(test, projectedCenters[3], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				imshow("test2", test);
 				//we can basically use the points around center to create a colour model.
 				
 

@@ -161,6 +161,23 @@ public:
 	{
 		return m_camera_plane;
 	}
+
+	const cv::Mat getRvec()
+	{
+		return m_rotation_values;
+	}
+	const cv::Mat getTvec()
+	{
+		return m_translation_values;
+	}
+	const cv::Mat getCamMatrix()
+	{
+		return m_camera_matrix;
+	}
+	const cv::Mat getDistCoeff()
+	{
+		return m_distortion_coeffs;
+	}
 };
 
 } /* namespace nl_uu_science_gmt */
