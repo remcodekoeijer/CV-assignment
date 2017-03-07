@@ -140,32 +140,24 @@ namespace nl_uu_science_gmt
 				//TODO: ignore height of the voxels, so we dont need all visvoxels. only add the ones from the upper body. 
 				for (int r = 0; r < sizeOfVisVoxels; r++)
 				{
-					positions.at<float>(r, 0) = visVoxels[r]->y;
-					positions.at<float>(r, 1) = visVoxels[r]->x;
+					positions.at<float>(r, 0) = visVoxels[r]->x;
+					positions.at<float>(r, 1) = visVoxels[r]->y;
 				}
 				//cluster. using KMEANS_PP_CENTERS gives uniformly distributed initial centers. this makes the chance of a local minimum very slim. 
 				kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.5), 3, KMEANS_PP_CENTERS, center);
-
-				//bestlabels corresponds to positions. so the first item in bestlabel is also first item in position. 
-				//
-
-				//project voxel points into image, not needed
-				vector<Point2d> points;
-				for (int i = 0; i < positions.rows; i++)
-				{
-					points.push_back(Point(positions.at<float>(i, 0), positions.at<float>(i, 1)));
-				}
+				
+		
 				//project cluster center into image,
 				vector<Point3d> centerPoints;
 				for (int i = 0; i < center.rows; i++)
 				{
-					centerPoints.push_back(Point3d(center.at<float>(i, 1), center.at<float>(i, 0), 0));
+					centerPoints.push_back(Point3d(center.at<float>(i, 0), center.at<float>(i, 1), 0));
 				}
 				vector<Point2d> projectedCenters;
-
+			
 				projectPoints(centerPoints, m_cameras[1]->getRvec(), m_cameras[1]->getTvec(), m_cameras[1]->getCamMatrix(), m_cameras[1]->getDistCoeff(), projectedCenters);
 				
-				//invert image, dont know must be a camera thing
+			
 				Mat test;
 				m_cameras[1]->getFrame().copyTo(test);
 				//draw circles at the center points
@@ -174,7 +166,116 @@ namespace nl_uu_science_gmt
 				circle(test, projectedCenters[2], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
 				circle(test, projectedCenters[3], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
 				imshow("test2", test);
-				//we can basically use the points around center to create a colour model.
+				//project points with height
+				//bestlabels corresponds to positions. so the first item in bestlabel is also first item in position. 
+				Mat complVox(sizeOfVisVoxels, 4, CV_32F);
+				for (int i=0;i<bestlabels.rows;i++)
+				{
+					complVox.at<float>(i, 0) = visVoxels[i]->x;
+					complVox.at<float>(i, 1) = visVoxels[i]->y;
+					complVox.at<float>(i, 2) = visVoxels[i]->z;
+					complVox.at<float>(i, 3) = bestlabels.at<int>(i, 0);
+				}
+
+				vector<Point3d> pointsWithHeight;
+				for (int i = 0; i < complVox.rows; i++)
+				{
+					pointsWithHeight.push_back(Point3d(complVox.at<float>(i, 0), complVox.at<float>(i, 1), complVox.at<float>(i, 2)));
+				}
+				//projected points with height
+				vector<Point2d> projectedPointsWithHeight;
+				projectPoints(pointsWithHeight, m_cameras[1]->getRvec(), m_cameras[1]->getTvec(), m_cameras[1]->getCamMatrix(), m_cameras[1]->getDistCoeff(), projectedPointsWithHeight);
+				
+				//create matrix with all points , their labels and RGB colors,
+				Mat complVox2(projectedPointsWithHeight.size(), 6, CV_32F);
+				for (int i = 0; i<projectedPointsWithHeight.size(); i++)
+				{
+					complVox2.at<float>(i, 0) = projectedPointsWithHeight[i].x;
+					complVox2.at<float>(i, 1) = projectedPointsWithHeight[i].y;
+					complVox2.at<float>(i, 2) = bestlabels.at<int>(i, 0);
+					complVox2.at<float>(i, 3) = 0;
+					complVox2.at<float>(i, 4) = 0;
+					complVox2.at<float>(i, 5) = 0;
+				}
+				cout <<"First "<< complVox2 << endl;
+
+			    //find values try 1
+				int count = 0;
+				Mat test2;
+				m_cameras[1]->getFrame().copyTo(test2);
+
+			    // fill complVox2 with the  BGR values
+				for (int r = 0; r <test2.rows; r++)
+				{
+					for (int c = 0; c < test2.cols; c++)
+					{
+						for (int i = 0; i < projectedPointsWithHeight.size(); i++)
+						{
+							if (r == (int)projectedPointsWithHeight[i].x && c== (int)projectedPointsWithHeight[i].y)
+							{
+								complVox2.at<float>(i, 3) =  test2.at<Vec3b>(r, c)[0];
+								complVox2.at<float>(i, 4) = test2.at<Vec3b>(r, c)[1];
+								complVox2.at<float>(i, 5) = test2.at<Vec3b>(r, c)[2];
+								count++;
+							}
+						}
+					}
+				}
+				cout << complVox2 << endl;
+				cout << "points size; " << projectedPointsWithHeight.size()<< endl;
+				cout << "count; " << count << endl; 
+				cout << "loss in points(float to int); " << projectedPointsWithHeight.size() - count << endl;
+				
+				//----------------------create color model with complVox2--------------//
+
+				
+
+				//---------------------------------------------------------------------//
+
+
+
+				//notes
+				/*//find values try 2
+				//create matrix with projected points for LUT
+				Mat complVox3(projectedPointsWithHeight.size(), 2, CV_32F);
+				for (int i = 0; i < projectedPointsWithHeight.size(); i++)
+				{
+				complVox3.at<int>(i, 0) = (int)projectedPointsWithHeight[i].x;
+				complVox3.at<int>(i, 1) = (int)projectedPointsWithHeight[i].y;
+				}
+
+				Mat test2;
+				m_cameras[1]->getFrame().copyTo(test2);
+				Mat lutOutput;
+				LUT(test2, complVox3, lutOutput);*/
+				//create color model
+
+
+
+				//part of splitting voxels in half is confusing leave it for later
+
+				/*//draw on upper points and get number of upper points(count)
+				int count = 0;
+				for (int i= (int)(projectedPointsWithHeight.size() / 2); i<projectedPointsWithHeight.size();i++)
+				{
+					circle(test, projectedPointsWithHeight[i], 1, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+					//cout <<"projected points with height first"<< projectedPointsWithHeight[i] << endl;
+					count++;
+				}
+				imshow("test3", test);
+				cout << count;
+				//create matrix with points  and labels, 
+				//int sizeX = 
+				Mat complVox2(count, 3, CV_32F);
+				for (int i = 0; i<count; i++)
+				{
+					complVox2.at<float>(i, 0) = projectedPointsWithHeight[i].x;
+					complVox2.at<float>(i, 1) = projectedPointsWithHeight[i].y;
+					complVox2.at<float>(i, 2) = bestlabels.at<int>(i, 0);
+					cout << projectedPointsWithHeight[i] << endl;
+				}
+				//cout << complVox2 << endl;*/
+
 				
 
 			}
