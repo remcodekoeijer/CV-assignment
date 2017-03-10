@@ -89,6 +89,10 @@ namespace nl_uu_science_gmt
 
 		createFloorGrid();
 		setTopView();
+
+		halfWidth = 2000;
+		Mat trackerImage(200, 200, CV_32F);
+		setTrackerImage(trackerImage);
 	}
 
 	/**
@@ -126,210 +130,255 @@ namespace nl_uu_science_gmt
 		//voxel stuff
 		//get the visible voxels from frame 10 ,maybe save for all cameras?
 		
-			if (m_current_frame == 10) 
+		if (m_current_frame > 1)
+		{
+			vector<Reconstructor::Voxel*> visVoxelsTMP(m_reconstructor.getVisibleVoxels());
+			int clusterCountTMP = 4;
+			int sizeOfVisVoxelsTMP = visVoxelsTMP.size();
+			Mat positionsTMP(sizeOfVisVoxelsTMP, 2, CV_32F);
+			Mat centerTMP, bestlabelsTMP;
+
+			//get points of voxels (x,y)
+			//TODO: ignore height of the voxels, so we dont need all visvoxels. only add the ones from the upper body. 
+			for (int r = 0; r < sizeOfVisVoxelsTMP; r++)
 			{
+				positionsTMP.at<float>(r, 0) = visVoxelsTMP[r]->x;
+				positionsTMP.at<float>(r, 1) = visVoxelsTMP[r]->y;
+			}
+			//cluster. using KMEANS_PP_CENTERS gives uniformly distributed initial centers. this makes the chance of a local minimum very slim. 
+			kmeans(positionsTMP, clusterCountTMP, bestlabelsTMP, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.5), 3, KMEANS_PP_CENTERS, centerTMP);
 
-				//voxel
-				vector<Reconstructor::Voxel*> visVoxels(m_reconstructor.getVisibleVoxels());
-				int clusterCount = 4;
-				int sizeOfVisVoxels = visVoxels.size();
-				Mat positions(sizeOfVisVoxels, 2, CV_32F);
-				Mat center, bestlabels;
+			//project cluster center into image,
+			vector<Point3d> centerPointsTMP;
+			for (int i = 0; i < centerTMP.rows; i++)
+			{
+				centerPointsTMP.push_back(Point3d(centerTMP.at<float>(i, 0), centerTMP.at<float>(i, 1), 0));
+			}
 
-				//get points of voxels (x,y)
-				//TODO: ignore height of the voxels, so we dont need all visvoxels. only add the ones from the upper body. 
-				for (int r = 0; r < sizeOfVisVoxels; r++)
-				{
-					positions.at<float>(r, 0) = visVoxels[r]->x;
-					positions.at<float>(r, 1) = visVoxels[r]->y;
-				}
-				//cluster. using KMEANS_PP_CENTERS gives uniformly distributed initial centers. this makes the chance of a local minimum very slim. 
-				kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.5), 3, KMEANS_PP_CENTERS, center);				
+			float c1x, c1y, c2x, c2y, c3x, c3y, c4x, c4y;
 
-				//project cluster center into image,
-				vector<Point3d> centerPoints;
-				for (int i = 0; i < center.rows; i++)
-				{
-					centerPoints.push_back(Point3d(center.at<float>(i, 0), center.at<float>(i, 1), 0));
-				}
-				vector<Point2d> projectedCenters;
+			c1x = centerPointsTMP[0].x;
+			c1y = centerPointsTMP[0].y;
+			c2x = centerPointsTMP[1].x;
+			c2y = centerPointsTMP[1].y;
+			c3x = centerPointsTMP[2].x;
+			c3y = centerPointsTMP[2].y;
+			c4x = centerPointsTMP[3].x;
+			c4y = centerPointsTMP[3].y;
+
+			tracker.at<float>(c1x / 10, c1y / 10) = 200;
+			tracker.at<float>(c2x / 10, c2y / 10) = 200;
+			tracker.at<float>(c3x / 10, c3y / 10) = 200;
+			tracker.at<float>(c4x / 10, c4y / 10) = 200;
+			imshow("tracker", tracker);
+			//it crashes somewhere and points aren't correct. 
+		}
+
+		if (m_current_frame == 10) 
+		{
+
+			//voxel
+			vector<Reconstructor::Voxel*> visVoxels(m_reconstructor.getVisibleVoxels());
+			int clusterCount = 4;
+			int sizeOfVisVoxels = visVoxels.size();
+			Mat positions(sizeOfVisVoxels, 2, CV_32F);
+			Mat center, bestlabels;
+
+			cout << "#voxels: " << sizeOfVisVoxels << endl;
+
+			//get points of voxels (x,y)
+			//TODO: ignore height of the voxels, so we dont need all visvoxels. only add the ones from the upper body. 
+			for (int r = 0; r < sizeOfVisVoxels; r++)
+			{
+				positions.at<float>(r, 0) = visVoxels[r]->x;
+				positions.at<float>(r, 1) = visVoxels[r]->y;
+			}
+			//cluster. using KMEANS_PP_CENTERS gives uniformly distributed initial centers. this makes the chance of a local minimum very slim. 
+			kmeans(positions, clusterCount, bestlabels, TermCriteria(TermCriteria::EPS + TermCriteria::COUNT, 10, 0.5), 3, KMEANS_PP_CENTERS, center);				
+
+			//project cluster center into image,
+			vector<Point3d> centerPoints;
+			for (int i = 0; i < center.rows; i++)
+			{
+				centerPoints.push_back(Point3d(center.at<float>(i, 0), center.at<float>(i, 1), 0));
+			}
+
+			cout << centerPoints << endl;
+
+			vector<Point2d> projectedCenters;
 			
-				projectPoints(centerPoints, m_cameras[1]->getRvec(), m_cameras[1]->getTvec(), m_cameras[1]->getCamMatrix(), m_cameras[1]->getDistCoeff(), projectedCenters);
+			projectPoints(centerPoints, m_cameras[1]->getRvec(), m_cameras[1]->getTvec(), m_cameras[1]->getCamMatrix(), m_cameras[1]->getDistCoeff(), projectedCenters);
 				
 			
-				Mat test;
-				m_cameras[1]->getFrame().copyTo(test);
-				//draw circles at the center points
-				//circle(test, projectedCenters[0], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				//circle(test, projectedCenters[1], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				//circle(test, projectedCenters[2], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				//circle(test, projectedCenters[3], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-				//imshow("test2", test);
+			Mat test;
+			m_cameras[1]->getFrame().copyTo(test);
+			//draw circles at the center points
+			//circle(test, projectedCenters[0], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+			//circle(test, projectedCenters[1], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+			//circle(test, projectedCenters[2], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+			//circle(test, projectedCenters[3], 10, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+			//imshow("test2", test);
 				
-				//project points with height
-				//bestlabels corresponds to positions. so the first item in bestlabel is also first item in position. 
-				Mat complVox(sizeOfVisVoxels, 4, CV_32F);
-				for (int i=0;i<bestlabels.rows;i++)
+			//project points with height
+			//bestlabels corresponds to positions. so the first item in bestlabel is also first item in position. 
+			Mat complVox(sizeOfVisVoxels, 4, CV_32F);
+			for (int i=0;i<bestlabels.rows;i++)
+			{
+				complVox.at<float>(i, 0) = visVoxels[i]->x;
+				complVox.at<float>(i, 1) = visVoxels[i]->y;
+				complVox.at<float>(i, 2) = visVoxels[i]->z;
+
+				int label = bestlabels.at<int>(i, 0);
+				complVox.at<float>(i, 3) = label;
+
+				//set the voxel color, depending on the label
+				switch (label)
 				{
-					complVox.at<float>(i, 0) = visVoxels[i]->x;
-					complVox.at<float>(i, 1) = visVoxels[i]->y;
-					complVox.at<float>(i, 2) = visVoxels[i]->z;
+					case 0: visVoxels[i]->color = Scalar(1.0f, 0.0f, 0.0f, 1.0f);
+						break;
+					case 1: visVoxels[i]->color = Scalar(0.0f, 1.0f, 0.0f, 1.0f);
+						break;
+					case 2: visVoxels[i]->color = Scalar(0.0f, 0.0f, 1.0f, 1.0f);
+						break;
+					case 3: visVoxels[i]->color = Scalar(1.0f, 0.0f, 1.0f, 1.0f);
+						break;
+					default: visVoxels[i]->color = Scalar(0.5f, 0.5f, 0.5f, 1.0f);
+						break;
+				}
+			}
+			m_reconstructor.setVisibleVoxels(visVoxels);
 
-					int label = bestlabels.at<int>(i, 0);
-					complVox.at<float>(i, 3) = label;
+			vector<Point3d> pointsWithHeight;
+			for (int i = 0; i < complVox.rows; i++)
+			{
+				pointsWithHeight.push_back(Point3d(complVox.at<float>(i, 0), complVox.at<float>(i, 1), complVox.at<float>(i, 2)));
+			}
+			//projected points with height
+			vector<Point2d> projectedPoints;
+			projectPoints(pointsWithHeight, m_cameras[1]->getRvec(), m_cameras[1]->getTvec(), m_cameras[1]->getCamMatrix(), m_cameras[1]->getDistCoeff(), projectedPoints);
 
-					//set the voxel color, depending on the label
-					switch (label)
+			//create matrix with all projected points , their labels and RGB colors,
+			Mat allProjectedPointsRGB(projectedPoints.size(), 6, CV_32F);
+			for (int i = 0; i<projectedPoints.size(); i++)
+			{
+				allProjectedPointsRGB.at<float>(i, 0) = projectedPoints[i].x;
+				allProjectedPointsRGB.at<float>(i, 1) = projectedPoints[i].y;
+				allProjectedPointsRGB.at<float>(i, 2) = bestlabels.at<int>(i, 0);
+				allProjectedPointsRGB.at<float>(i, 3) = 0;
+				allProjectedPointsRGB.at<float>(i, 4) = 0;
+				allProjectedPointsRGB.at<float>(i, 5) = 0;
+			}
+			//cout <<"First "<< allProjectedPointsRGB << endl;
+
+			//find values try 1
+			int count = 0;
+			Mat test2;
+			m_cameras[1]->getFrame().copyTo(test2);
+
+			// fill allProjectedPointsRGB with the RGB values
+			for (int r = 0; r < test2.rows; r++)
+			{
+				for (int c = 0; c < test2.cols; c++)
+				{
+					for (int i = 0; i < projectedPoints.size(); i++)
 					{
-						case 0: visVoxels[i]->color = Scalar(1.0f, 0.0f, 0.0f, 1.0f);
-							break;
-						case 1: visVoxels[i]->color = Scalar(0.0f, 1.0f, 0.0f, 1.0f);
-							break;
-						case 2: visVoxels[i]->color = Scalar(0.0f, 0.0f, 1.0f, 1.0f);
-							break;
-						case 3: visVoxels[i]->color = Scalar(1.0f, 0.0f, 1.0f, 1.0f);
-							break;
-						default: visVoxels[i]->color = Scalar(0.5f, 0.5f, 0.5f, 1.0f);
-							break;
-					}
-				}
-				m_reconstructor.setVisibleVoxels(visVoxels);
-
-				vector<Point3d> pointsWithHeight;
-				for (int i = 0; i < complVox.rows; i++)
-				{
-					pointsWithHeight.push_back(Point3d(complVox.at<float>(i, 0), complVox.at<float>(i, 1), complVox.at<float>(i, 2)));
-				}
-				//projected points with height
-				vector<Point2d> projectedPoints;
-				projectPoints(pointsWithHeight, m_cameras[1]->getRvec(), m_cameras[1]->getTvec(), m_cameras[1]->getCamMatrix(), m_cameras[1]->getDistCoeff(), projectedPoints);
-
-				//create matrix with all projected points , their labels and RGB colors,
-				Mat allProjectedPointsRGB(projectedPoints.size(), 6, CV_32F);
-				for (int i = 0; i<projectedPoints.size(); i++)
-				{
-					allProjectedPointsRGB.at<float>(i, 0) = projectedPoints[i].x;
-					allProjectedPointsRGB.at<float>(i, 1) = projectedPoints[i].y;
-					allProjectedPointsRGB.at<float>(i, 2) = bestlabels.at<int>(i, 0);
-					allProjectedPointsRGB.at<float>(i, 3) = 0;
-					allProjectedPointsRGB.at<float>(i, 4) = 0;
-					allProjectedPointsRGB.at<float>(i, 5) = 0;
-				}
-				//cout <<"First "<< allProjectedPointsRGB << endl;
-
-			    //find values try 1
-				int count = 0;
-				Mat test2;
-				m_cameras[1]->getFrame().copyTo(test2);
-
-			    // fill allProjectedPointsRGB with the RGB values
-				for (int r = 0; r < test2.rows; r++)
-				{
-					for (int c = 0; c < test2.cols; c++)
-					{
-						for (int i = 0; i < projectedPoints.size(); i++)
+						if (c == round(projectedPoints[i].x) && r == round(projectedPoints[i].y))
 						{
-							if (c == round(projectedPoints[i].x) && r == round(projectedPoints[i].y))
-							{
-								allProjectedPointsRGB.at<float>(i, 3) = test2.at<Vec3b>(r, c)[0];
-								allProjectedPointsRGB.at<float>(i, 4) = test2.at<Vec3b>(r, c)[1];
-								allProjectedPointsRGB.at<float>(i, 5) = test2.at<Vec3b>(r, c)[2];
-								count++;
-							}
+							allProjectedPointsRGB.at<float>(i, 3) = test2.at<Vec3b>(r, c)[0];
+							allProjectedPointsRGB.at<float>(i, 4) = test2.at<Vec3b>(r, c)[1];
+							allProjectedPointsRGB.at<float>(i, 5) = test2.at<Vec3b>(r, c)[2];
+							count++;
 						}
 					}
 				}
-				//cout << complVox2 << endl;
-				//cout << "points size; " << projectedPoints.size()<< endl;
-				//cout << "count; " << count << endl; 
-				//cout << "loss in points(float to int); " << projectedPoints.size() - count << endl;
-				
-
-				//----------------------create color model with allProjectedPointsRGB--------------//
-				//4 histograms, 1 per person. each histogram has 16 bins per color (0-15, 16-31, etc) and 1 value for how many there is of a color. 
-				//vector<vector<vector<int>>> R, G and B go from 0 to 15, for the 16 bins, # is the amount of pixels with that combination of color values. 
-				//http://stackoverflow.com/questions/29305621/problems-using-3-dimensional-vector for the vector.
-				int binSize = 16;
-				vector<vector<vector<int>>> histPerson1(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
-				vector<vector<vector<int>>> histPerson2(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
-				vector<vector<vector<int>>> histPerson3(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
-				vector<vector<vector<int>>> histPerson4(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
-
-				for (int i = 0; i < projectedPoints.size(); i++)
-				{
-					//the bin number for the color values
-					int r = allProjectedPointsRGB.at<float>(i, 3) / 16;
-					int g = allProjectedPointsRGB.at<float>(i, 4) / 16;
-					int b = allProjectedPointsRGB.at<float>(i, 5) / 16;
-					
-					int label = allProjectedPointsRGB.at<float>(i, 2);
-
-					switch (label)
-					{
-						case 0: histPerson1[r][g][b] += 1;
-								cout << r << " " << g << " " << b << " " << histPerson1[r][g][b] << endl;
-							break;
-						case 1: histPerson2[r][g][b] += 1;
-								cout << r << " " << g << " " << b << " " << histPerson2[r][g][b] << endl;
-							break;
-						case 2: histPerson3[r][g][b] += 1;
-								cout << r << " " << g << " " << b << " " << histPerson3[r][g][b] << endl;
-							break;
-						case 3: histPerson4[r][g][b] += 1;
-								cout << r << " " << g << " " << b << " " << histPerson4[r][g][b] << endl;
-							break;
-					}
-				}
-
-				//---------------------------------------------------------------------//
-
-
-
-				//notes
-				/*//find values try 2
-				//create matrix with projected points for LUT
-				Mat complVox3(projectedPointsWithHeight.size(), 2, CV_32F);
-				for (int i = 0; i < projectedPointsWithHeight.size(); i++)
-				{
-				complVox3.at<int>(i, 0) = (int)projectedPointsWithHeight[i].x;
-				complVox3.at<int>(i, 1) = (int)projectedPointsWithHeight[i].y;
-				}
-
-				Mat test2;
-				m_cameras[1]->getFrame().copyTo(test2);
-				Mat lutOutput;
-				LUT(test2, complVox3, lutOutput);*/
-				//create color model
-
-
-
-				//part of splitting voxels in half is confusing leave it for later
-
-				/*//draw on upper points and get number of upper points(count)
-				int count = 0;
-				for (int i= (int)(projectedPointsWithHeight.size() / 2); i<projectedPointsWithHeight.size();i++)
-				{
-					circle(test, projectedPointsWithHeight[i], 1, Scalar(255, 255, 255), CV_FILLED, 8, 0);
-					//cout <<"projected points with height first"<< projectedPointsWithHeight[i] << endl;
-					count++;
-				}
-				imshow("test3", test);
-				cout << count;
-				//create matrix with points  and labels, 
-				//int sizeX = 
-				Mat complVox2(count, 3, CV_32F);
-				for (int i = 0; i<count; i++)
-				{
-					complVox2.at<float>(i, 0) = projectedPointsWithHeight[i].x;
-					complVox2.at<float>(i, 1) = projectedPointsWithHeight[i].y;
-					complVox2.at<float>(i, 2) = bestlabels.at<int>(i, 0);
-					cout << projectedPointsWithHeight[i] << endl;
-				}
-				//cout << complVox2 << endl;*/
-
-				
-
 			}
+				
+
+			//----------------------create color model with allProjectedPointsRGB--------------//
+			//4 histograms, 1 per person. each histogram has 16 bins per color (0-15, 16-31, etc) and 1 value for how many there is of a color. 
+			//vector<vector<vector<int>>> R, G and B go from 0 to 15, for the 16 bins, # is the amount of pixels with that combination of color values. 
+			//http://stackoverflow.com/questions/29305621/problems-using-3-dimensional-vector for the vector.
+			int binSize = 16;
+			vector<vector<vector<int>>> histPerson1(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
+			vector<vector<vector<int>>> histPerson2(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
+			vector<vector<vector<int>>> histPerson3(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
+			vector<vector<vector<int>>> histPerson4(binSize, vector<vector<int>>(binSize, vector<int>(binSize, 0)));
+
+			for (int i = 0; i < projectedPoints.size(); i++)
+			{
+				//the bin number for the color values
+				int r = allProjectedPointsRGB.at<float>(i, 3) / 16;
+				int g = allProjectedPointsRGB.at<float>(i, 4) / 16;
+				int b = allProjectedPointsRGB.at<float>(i, 5) / 16;
+					
+				int label = allProjectedPointsRGB.at<float>(i, 2);
+
+				switch (label)
+				{
+					case 0: histPerson1[r][g][b] += 1;
+							//cout << r << " " << g << " " << b << " " << histPerson1[r][g][b] << " 1" << endl;
+						break;
+					case 1: histPerson2[r][g][b] += 1;
+							//cout << r << " " << g << " " << b << " " << histPerson2[r][g][b] << " 2" << endl;
+						break;
+					case 2: histPerson3[r][g][b] += 1;
+							//cout << r << " " << g << " " << b << " " << histPerson3[r][g][b] << " 3" << endl;
+						break;
+					case 3: histPerson4[r][g][b] += 1;
+							//cout << r << " " << g << " " << b << " " << histPerson4[r][g][b] << " 4" << endl;
+						break;
+				}
+			}
+
+			//---------------------------------------------------------------------//
+
+
+
+			//notes
+			/*//find values try 2
+			//create matrix with projected points for LUT
+			Mat complVox3(projectedPointsWithHeight.size(), 2, CV_32F);
+			for (int i = 0; i < projectedPointsWithHeight.size(); i++)
+			{
+			complVox3.at<int>(i, 0) = (int)projectedPointsWithHeight[i].x;
+			complVox3.at<int>(i, 1) = (int)projectedPointsWithHeight[i].y;
+			}
+
+			Mat test2;
+			m_cameras[1]->getFrame().copyTo(test2);
+			Mat lutOutput;
+			LUT(test2, complVox3, lutOutput);*/
+			//create color model
+
+
+
+			//part of splitting voxels in half is confusing leave it for later
+
+			/*//draw on upper points and get number of upper points(count)
+			int count = 0;
+			for (int i= (int)(projectedPointsWithHeight.size() / 2); i<projectedPointsWithHeight.size();i++)
+			{
+				circle(test, projectedPointsWithHeight[i], 1, Scalar(255, 255, 255), CV_FILLED, 8, 0);
+				//cout <<"projected points with height first"<< projectedPointsWithHeight[i] << endl;
+				count++;
+			}
+			imshow("test3", test);
+			cout << count;
+			//create matrix with points  and labels, 
+			//int sizeX = 
+			Mat complVox2(count, 3, CV_32F);
+			for (int i = 0; i<count; i++)
+			{
+				complVox2.at<float>(i, 0) = projectedPointsWithHeight[i].x;
+				complVox2.at<float>(i, 1) = projectedPointsWithHeight[i].y;
+				complVox2.at<float>(i, 2) = bestlabels.at<int>(i, 0);
+				cout << projectedPointsWithHeight[i] << endl;
+			}
+			//cout << complVox2 << endl;*/
+
+				
+
+		}
 		
 		//======================================================================================
 
