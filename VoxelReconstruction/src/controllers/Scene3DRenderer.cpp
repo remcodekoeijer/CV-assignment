@@ -196,9 +196,11 @@ namespace nl_uu_science_gmt
 						{
 							int label = complVoxR1.at<float>(j, 3);//get label of voxel
 
-						    if (label == count)
-								visVoxels[j]->color = Scalar(1.0f, 0.0f, 0.0f, 1.0f);//paint it
-
+							if (label == count) {
+								visVoxels[j]->color = Scalar(1.0f, 0.0f, 0.0f, 1.0f);//paint it red
+								trackerImage.at<Vec3b>((halfWidth + centerPoints[label].x) / step * 5, (halfWidth + centerPoints[label].y) / step * 5) = Vec3b(0, 0, 255);
+							}
+								
 						}	
 				}
 				count += 1;//increase label
@@ -214,7 +216,11 @@ namespace nl_uu_science_gmt
 						int label = complVoxR1.at<float>(j, 3);
 
 						if (label == count)
+						{
 							visVoxels[j]->color = Scalar(0.0f, 1.0f, 0.0f, 1.0f);
+							trackerImage.at<Vec3b>((halfWidth + centerPoints[label].x) / step * 5, (halfWidth + centerPoints[label].y) / step * 5) = Vec3b(0, 255, 0);
+						}
+							
 
 					}
 				}
@@ -231,7 +237,12 @@ namespace nl_uu_science_gmt
 						int label = complVoxR1.at<float>(j, 3);
 
 						if (label == count)
+						{
 							visVoxels[j]->color = Scalar(0.0f, 0.0f, 1.0f, 1.0f);
+							trackerImage.at<Vec3b>((halfWidth + centerPoints[label].x) / step * 5, (halfWidth + centerPoints[label].y) / step * 5) = Vec3b(255, 0, 0);
+							
+						}
+							
 
 					}
 				}
@@ -247,7 +258,11 @@ namespace nl_uu_science_gmt
 						int label = complVoxR1.at<float>(j, 3);
 
 						if (label == count)
+						{
 							visVoxels[j]->color = Scalar(1.0f, 0.0f, 1.0f, 1.0f);
+							trackerImage.at<Vec3b>((halfWidth + centerPoints[label].x) / step * 5, (halfWidth + centerPoints[label].y) / step * 5) = Vec3b(255, 0, 255);
+						}
+							
 					}
 					
 				}
@@ -255,10 +270,10 @@ namespace nl_uu_science_gmt
 			}
 
 			//drawing on the tracker image
-			trackerImage.at<float>((halfWidth + centerPoints[0].x) / step * 5, (halfWidth + centerPoints[0].y) / step * 5) = 255;
-			trackerImage.at<float>((halfWidth + centerPoints[1].x) / step * 5, (halfWidth + centerPoints[1].y) / step * 5) = 255;
-			trackerImage.at<float>((halfWidth + centerPoints[2].x) / step * 5, (halfWidth + centerPoints[2].y) / step * 5) = 255;
-			trackerImage.at<float>((halfWidth + centerPoints[3].x) / step * 5, (halfWidth + centerPoints[3].y) / step * 5) = 255;
+			//trackerImage.at<float>((halfWidth + centerPoints[0].x) / step * 5, (halfWidth + centerPoints[0].y) / step * 5) = 255;
+		//	trackerImage.at<float>((halfWidth + centerPoints[1].x) / step * 5, (halfWidth + centerPoints[1].y) / step * 5) = 255;
+		//	trackerImage.at<float>((halfWidth + centerPoints[2].x) / step * 5, (halfWidth + centerPoints[2].y) / step * 5) = 255;
+		//	trackerImage.at<float>((halfWidth + centerPoints[3].x) / step * 5, (halfWidth + centerPoints[3].y) / step * 5) = 255;
 			imshow("trackerimage", trackerImage);
 			
 			//cout << "current frame " << m_current_frame << " chi square 1; "  <<chi/2<< endl;
