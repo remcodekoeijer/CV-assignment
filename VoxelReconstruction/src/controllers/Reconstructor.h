@@ -86,6 +86,11 @@ public:
 		return m_height;
 	}
 
+	int getStep() const
+	{
+		return m_step;
+	}
+
 	const cv::Size& getPlaneSize() const
 	{
 		return m_plane_size;

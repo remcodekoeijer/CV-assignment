@@ -91,6 +91,10 @@ namespace nl_uu_science_gmt
 		createFloorGrid();
 		setTopView();
 		histogramsCreated = false;
+		halfWidth = m_reconstructor.getSize();
+		step = m_reconstructor.getStep();
+		Mat trackerImg(halfWidth * 2 / step * 5, halfWidth * 2 / step * 5, CV_8UC3, Scalar(0,0,0));
+		setTrackerImage(trackerImg);
 	}
 
 	/**
@@ -141,13 +145,16 @@ namespace nl_uu_science_gmt
 		if (m_current_frame > 2 && histogramsCreated)
 		{
 			Mat complVoxR1;
+			vector<Point3d> centerPoints;
 			
-			getHisto(h1, h2, h3, h4, numOfView, complVoxR1); //create online maybe merge functions practically the same
-			cout << "processframe " << numOfView << endl;
+			getHisto(h1, h2, h3, h4, numOfView, complVoxR1, centerPoints); //create online maybe merge functions practically the same
+			//cout << "processframe " << numOfView << endl;
+			//cout << "centerpoints: " << centerPoints << endl;
 			onHistos.push_back(h1);
 			onHistos.push_back(h2);
 			onHistos.push_back(h3);
 			onHistos.push_back(h4);
+
 			//compare
 			double chi = 0; //chi distance
 			vector<double> chis; //chi array
@@ -246,10 +253,17 @@ namespace nl_uu_science_gmt
 				}
 				count += 1;
 			}
+
+			//drawing on the tracker image
+			trackerImage.at<float>((halfWidth + centerPoints[0].x) / step * 5, (halfWidth + centerPoints[0].y) / step * 5) = 255;
+			trackerImage.at<float>((halfWidth + centerPoints[1].x) / step * 5, (halfWidth + centerPoints[1].y) / step * 5) = 255;
+			trackerImage.at<float>((halfWidth + centerPoints[2].x) / step * 5, (halfWidth + centerPoints[2].y) / step * 5) = 255;
+			trackerImage.at<float>((halfWidth + centerPoints[3].x) / step * 5, (halfWidth + centerPoints[3].y) / step * 5) = 255;
+			imshow("trackerimage", trackerImage);
 			
-		//cout << "current frame " << m_current_frame << " chi square 1; "  <<chi/2<< endl;
-		onHistos.clear();
-		visVoxels.clear();
+			//cout << "current frame " << m_current_frame << " chi square 1; "  <<chi/2<< endl;
+			onHistos.clear();
+			visVoxels.clear();
 		}
 		//======================================================================================
 
@@ -463,7 +477,7 @@ namespace nl_uu_science_gmt
 		m_floor_grid.push_back(edge4);
 	}
 
-	void Scene3DRenderer::getHisto(vector<vector<vector<int>>> &h1, vector<vector<vector<int>>> &h2, vector<vector<vector<int>>> &h3, vector<vector<vector<int>>> &h4, int &numOfView, Mat &complVoxR)
+	void Scene3DRenderer::getHisto(vector<vector<vector<int>>> &h1, vector<vector<vector<int>>> &h2, vector<vector<vector<int>>> &h3, vector<vector<vector<int>>> &h4, int &numOfView, Mat &complVoxR, vector<Point3d> &centers)
 	{
 		//voxel
 		vector<Reconstructor::Voxel*> visVoxels(m_reconstructor.getVisibleVoxels());
@@ -549,7 +563,7 @@ namespace nl_uu_science_gmt
 			}
 		}
 
-		cout << "labelcounts scalar: " << labelCounts << endl;
+		//cout << "labelcounts scalar: " << labelCounts << endl;
 		int maxLabelCount = max(labelCounts[0], max(labelCounts[1], max(labelCounts[2], labelCounts[3])));
 		int diff = maxLabelCount * 0.5; //max difference between clustersizes is 20%
 		//cout << "diff: " << diff << endl; 
@@ -558,7 +572,7 @@ namespace nl_uu_science_gmt
 		{
 			//clustersizes differ to much, so there is occlusion in the current cameraview. Continue with the next view
 			numOfView = (numOfView + 1) % 4;
-			getHisto(h1, h2, h3, h4, numOfView, complVoxR);
+			getHisto(h1, h2, h3, h4, numOfView, complVoxR, centers);
 			return;
 		}
 		//=========================================================
@@ -635,6 +649,7 @@ namespace nl_uu_science_gmt
 		h3 = histPerson3;
 		h4 = histPerson4;
 		complVox.copyTo(complVoxR);
+		centers = centerPoints;
 		//---------------------------------------------------------------------//
 	}
 	void Scene3DRenderer::getHistoOff(vector<vector<vector<int>>> &h1, vector<vector<vector<int>>> &h2, vector<vector<vector<int>>> &h3, vector<vector<vector<int>>> &h4)

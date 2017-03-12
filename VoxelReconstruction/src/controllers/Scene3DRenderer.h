@@ -73,6 +73,9 @@ namespace nl_uu_science_gmt
 												  // edge points of the virtual ground floor grid
 		std::vector<std::vector<cv::Point3i*> > m_floor_grid;
 
+		int halfWidth, step;
+		cv::Mat trackerImage;
+
 		void createFloorGrid();
 
 		bool histogramsCreated;
@@ -111,6 +114,11 @@ namespace nl_uu_science_gmt
 		void setCamera(
 			int);
 		void setTopView();
+
+		void setTrackerImage(cv::Mat img)
+		{
+			trackerImage = img;
+		}
 
 		const std::vector<Camera*>& getCameras() const
 		{
@@ -434,7 +442,7 @@ namespace nl_uu_science_gmt
 		}
 
 		void getHistoOff(std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&);
-		void getHisto(std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&,int&, cv::Mat&);
+		void getHisto(std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&, std::vector<std::vector<std::vector<int>>>&,int&, cv::Mat&, vector<cv::Point3d>&);
 	};
 
 } /* namespace nl_uu_science_gmt */
